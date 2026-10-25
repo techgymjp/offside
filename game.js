@@ -1121,7 +1121,7 @@
     } else if (state.phase === 'var') {
       // 判定の瞬間は、副審のようにラインの真横へ
       cy = (J.sl.y + J.recvY) / 2;
-      back = 34; h = 17;
+      back = 36; h = 23; pitch = -0.6; // 客席を画面に残して、上に判定を出せるようにする
     } else {
       cy = b.y;
       if (state.phase === 'result' && J && state.lastResult && state.lastResult.kind === 'offside') cy = (J.sl.y + J.recvY) / 2;
@@ -1277,7 +1277,10 @@
     const J = state.judge, p = state.play;
     if (!J || !(state.phase === 'var' || state.phase === 'run' || state.phase === 'attack' || (state.phase === 'result' && state.phaseT < 1.2))) return;
     ctx.save();
-    const y0 = isTouch ? 132 : 118;
+    // プレーの邪魔にならないよう、上のボタンと奥の広告看板の間(客席のあたり)に出す
+    const top = MUTE.y + MUTE.r + 6;
+    const far = Scene3D.project(-HX - 6, state.view.y, 0.9);
+    const y0 = Math.max(top, Math.min(far.behind ? top : far.y - 58, isTouch ? 90 : 80));
     let text, col;
     if (J.exempt) { text = t('call.' + p.kind) + ' → ' + t('var.exempt'); col = '#9fe8ff'; }
     else if (J.level) { text = t('var.level'); col = '#9fe8ff'; }
@@ -1287,18 +1290,18 @@
       // 後ろから2人目より前でも、自陣・ボールより後ろならオフサイドポジションではない
       text = t('var.exempt'); col = '#9fe8ff';
     }
-    ctx.font = '900 26px sans-serif';
+    ctx.font = '900 24px sans-serif';
     const w = Math.min(W - 40, Math.max(ctx.measureText(text).width, 200) + 48);
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(W / 2 - w / 2, y0, w, 64);
-    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - w / 2, y0, w, 64);
+    ctx.fillRect(W / 2 - w / 2, y0, w, 54);
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - w / 2, y0, w, 54);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ddd';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('VAR · ' + t('var.title'), W / 2, y0 + 20);
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('VAR · ' + t('var.title'), W / 2, y0 + 16);
     ctx.fillStyle = col;
-    ctx.font = '900 26px sans-serif';
-    ctx.fillText(text, W / 2, y0 + 51, w - 20);
+    ctx.font = '900 24px sans-serif';
+    ctx.fillText(text, W / 2, y0 + 44, w - 20);
     // 線のラベル(奥のタッチラインのあたり)
     if (!J.exempt) {
       // 手前のタッチラインのあたりに、線の左右に分けて出す
@@ -1650,7 +1653,7 @@
     ctx.translate(MUTE.x, MUTE.y);
     ctx.scale(k, k);
     const x = 0, y = 0, r = 20;
-    if (!Sound.muted && !Sound.ready && state.phase !== 'title' && state.phase !== 'over') {
+    if (!Sound.muted && !Sound.ready && state.phase !== 'title' && state.phase !== 'over' && state.phase !== 'var' && state.phase !== 'run' && state.phase !== 'attack') {
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.fillRect(x - 84, y + 26, 168, 24);
       ctx.fillStyle = '#ffe14d';
