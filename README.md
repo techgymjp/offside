@@ -3,6 +3,7 @@
 サッカーの **オフサイド** をテーマにしたブラウザゲームです。
 あなたは赤チームの守備ライン。ドリブルで攻めてくる相手がパスを出す瞬間に、ラインから遅れている DF をタップしてラインを上げ、
 相手を **オフサイドトラップ** にかけます。遊びながら、オフサイドが成立する条件・成立しない条件を学べます。全 10 プレーで何回ピンチを止められるかを競います。
+場面は 13 種類からランダムに選ばれ(同じ場面は 2 回まで・続けては出ない)、同じ場面でも選手の配置・ラインの高さ・遅れている DF・パスのタイミングは毎回変わります。
 
 画面は **テレビ中継のようにメインスタンドの上から守備ラインを横から見る3D視点**(右が守るゴール)。ナイター照明のスタジアム・選手・ボタン・花火・歓声などの質感は
 techgymjp/corner-kick(コーナーキック)と同じ作りです。
@@ -39,27 +40,32 @@ GitHub Pages などの静的ホスティングにそのまま置けます。
 | **後ろから2人目** は GK も数える | 「キーパーが前に」: GK が前に出ていて、その後ろに DF が残っている。上げるべきは GK の後ろの DF |
 | **自陣** にいる選手はオフサイドにならない | 「高いライン」: 9番は自陣から走り出す。上げずにカバーするのが正解 |
 | **ボールより後ろ** の選手はオフサイドにならない | 「サイドをえぐられた」: ゴールライン近くからのマイナスのパス(カットバック) |
-| **ゴールキック・スローイン・コーナーキック** からはオフサイドにならない | 「スローイン」「ゴールキック」: ラインを上げるとマークが外れて失点。上げずに競り合うのが正解 |
+| **ゴールキック・スローイン・コーナーキック** からはオフサイドにならない | 「スローイン」「ゴールキック」「コーナーキック」: ラインを上げるとマークが外れて失点。上げずに競り合うのが正解 |
+| ピッチの外に出た守備者は **ゴールライン上にいる** とみなす | 「DFがピッチの外に」: 倒れた DF がゴールラインの外にいるので、後ろから2人目は GK。上げてもオフサイドにならない |
+| GK が **手で投げた** ボールはオフサイドがある(判定は手から離れた地点。2025/26 の改正) | 「キーパーのスロー」: スローインとちがって罠にかけられる |
 | **フリーキック** からはオフサイドがある | 「フリーキック」: 遅れている DF が 2 人。2 人とも上げないとオフサイドにならない |
 
-タイトル画面の「📘 オフサイドのルール」では、上の条件に加えて、ピッチの外に出た守備者の扱い・相手が意図的にプレーしたボール・
+タイトル画面の「📘 オフサイドのルール」では、上の条件に加えて、相手が意図的にプレーしたボール・
 GK が手で投げたボールの判定位置(2025/26 の改正)・罰則(間接フリーキック)もまとめています。
 出典: IFAB Laws of the Game 2025/26 Law 11(日本語版: JFA サッカー競技規則)。
 
-## 10 プレーの内容
+## 場面(13 種類からランダムに 10 プレー)
 
-| # | 場面 | 正解 |
-| --- | --- | --- |
-| 1 | 中央突破 | 遅れている DF 1 人をパスの瞬間に上げる |
-| 2 | ロングボール | 相手陣内からのロングボール。遅れている DF を上げる |
-| 3 | スローイン | 上げない(スローインからはオフサイドなし)。マークの DF が競り勝つ |
-| 4 | 中央突破(2 人遅れ) | 遅れている DF 2 人を両方上げる |
-| 5 | 2人が裏を狙う | ラインを決めている DF を上げる。おとりのオフサイドポジションは反則ではない |
-| 6 | サイドをえぐられた | 上げない(ボールより後ろの選手はオフサイドなし) |
-| 7 | キーパーが前に | GK の後ろに残っている DF を、少し早めに上げる |
-| 8 | 高いライン | 上げない(自陣から走る選手はオフサイドなし)。カバーの DF が先に追いつく |
-| 9 | ゴールキック | 上げない(ゴールキックからはオフサイドなし) |
-| 10 | フリーキック | 遅れている DF 2 人を両方上げる |
+| 場面 | 正解 |
+| --- | --- |
+| 中央突破 | 遅れている DF 1 人をパスの瞬間に上げる |
+| ラインがそろっていない | 遅れている DF 2 人を両方上げる |
+| ロングボール | 相手陣内からのロングボール。遅れている DF を上げる |
+| 2人が裏を狙う | ラインを決めている DF を上げる。おとりのオフサイドポジションは反則ではない |
+| キーパーが前に | GK の後ろに残っている DF を、少し早めに上げる |
+| フリーキック | 遅れている DF 2 人を両方上げる |
+| キーパーのスロー | 遅れている DF を上げる(GK のスローはオフサイドがある) |
+| スローイン | 上げない(スローインからはオフサイドなし)。マークの DF が競り勝つ |
+| ゴールキック | 上げない(ゴールキックからはオフサイドなし) |
+| コーナーキック | 上げない(コーナーキックからはオフサイドなし) |
+| サイドをえぐられた | 上げない(ボールより後ろの選手はオフサイドなし) |
+| 高いライン | 上げない(自陣から走る選手はオフサイドなし)。カバーの DF が先に追いつく |
+| DFがピッチの外に | 上げない(外に出た DF はゴールライン上とみなすので、後ろから2人目は GK) |
 
 後半になるほど、相手の反応が速くなり、パスの振りかぶりが短くなり、遅れている DF とラインの差が小さくなります。
 
@@ -118,5 +124,5 @@ GK が手で投げたボールの判定位置(2025/26 の改正)・罰則(間接
 
 - You control the red back line, seen from a TV-style camera high in the main stand. Tap the defender who is lagging behind (or press 1–4) right as the pass is played — he steps up and springs the trap.
 - Too early and the striker drops back onside; after the pass is too late. A VAR slow-motion shows the second-last defender's line, the receiver's line and the gap, and the assistant referee flags once the offside player gets involved.
-- 10 plays cover the key conditions of Law 11: the moment of the pass, long balls, level = onside, the keeper counting as an opponent, passive offside, own half, behind the ball, and no offside from throw-ins and goal kicks (free kicks do count). Each result comes with a short explanation.
+- Each game picks 10 plays at random from 13 situations, with new player positions every time. They cover the key conditions of Law 11: the moment of the pass, long balls, level = onside, the keeper counting as an opponent, passive offside, own half, behind the ball, no offside from throw-ins, goal kicks and corners (free kicks and keeper's throws do count), and a defender off the pitch counting as on the goal line. Each result comes with a short explanation.
 - Open `index.html` in a browser to play.

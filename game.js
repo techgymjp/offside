@@ -30,8 +30,9 @@
   const DEFS = ['d1', 'd2', 'd3', 'd4'];                 // 左から(画面の上=奥から)1〜4 キー
   const HOME = ['d1', 'd2', 'd3', 'd4', 'm1', 'm2', 'gk'];
   const NUM = { d1: '2', d2: '4', d3: '5', d4: '3', m1: '6', m2: '8', P: '10', R: '9', R2: '11', S: '7' }; // scene3d.js の ROSTER と同じ
-  // 10 プレーの順番(最初は基本のトラップ、だんだんオフサイドにならない場面やキーパーの位置の問題が混ざる)
-  const KINDS = ['through', 'long', 'throw', 'through2', 'two', 'cutback', 'gkout', 'ownhalf', 'goalkick', 'fk'];
+  // 場面の種類。試合ごとにこの中からランダムに 10 プレーを選ぶ(同じ場面は 2 回まで・続けては出ない)
+  const KINDS = ['through', 'long', 'throw', 'through2', 'two', 'cutback', 'gkout', 'ownhalf', 'goalkick', 'fk', 'corner', 'offfield', 'gkthrow'];
+  const AERIAL = { goalkick: 3.1, cross: 1.5, chip: 0 }; // 受け手の頭へ送る浮き球(マークの DF と競り合う)。0 は距離から決める
   const t = (k, v) => I18N.t(k, v);
 
   const canvas = document.getElementById('game');
@@ -143,7 +144,7 @@
   const state = {
     phase: 'title', // title | ready | build | var | run | attack | result | over
     paused: false,
-    index: 0, total: TOTAL,
+    index: 0, total: TOTAL, order: KINDS.slice(),
     ok: 0, traps: 0, score: 0, streak: 0, bestStreak: 0,
     phaseT: 0, overT: 0, buildT: 0,
     play: null, actors: {}, ball: null,
@@ -165,6 +166,7 @@
 
   function newGame(seed) {
     state.seed = (seed != null ? seed : (Date.now() ^ (Math.random() * 1e9))) >>> 0;
+    state.order = makeOrder(state.seed);
     Object.assign(state, {
       phase: 'ready', paused: false, index: 0, ok: 0, traps: 0, score: 0,
       streak: 0, bestStreak: 0, phaseT: 0, overT: 0, popups: [], lastResult: null, newRecord: false, navUsed: false,
@@ -172,11 +174,24 @@
     startPlay();
   }
 
+  // 10 プレーの場面の順番
+  function makeOrder(seed) {
+    const r = mulberry32(seed ^ 0x9e3779b9);
+    const count = {}, order = [];
+    while (order.length < TOTAL) {
+      const k = KINDS[(r() * KINDS.length) | 0];
+      if ((count[k] || 0) >= 2 || k === order[order.length - 1]) continue;
+      count[k] = (count[k] || 0) + 1;
+      order.push(k);
+    }
+    return order;
+  }
+
   // ---------- プレーの準備 ----------
   // 場面ごとに、守備ライン(lineY)・遅れている DF(laggers)・相手の動き・パスの種類を決める
   function genPlay(i) {
     const lv = i / (TOTAL - 1);
-    const kind = api.forceKind || KINDS[i % KINDS.length];
+    const kind = api.forceKind || state.order[i % state.order.length];
     const m = rng() < 0.5 ? -1 : 1; // 左右反転
     const p = {
       kind, lv, m,
@@ -187,7 +202,10 @@
       kicker: 'P', passType: 'through', receiver: 'R', decoy: null,
       laggers: [], depth: {}, pos: {}, Tp: 3,
     };
-    const lanes = [-18, -6.5, 6.5, 18].map((x) => x + rand(-1.5, 1.5));
+    // DF 4 人の並び: 幅も左右の位置も毎回変わる
+    const width = rand(30, 40), cx = rand(-4, 4);
+    const lanes = [-0.5, -1 / 6, 1 / 6, 0.5].map((f) => cx + f * width + rand(-1.5, 1.5));
+    const pick = (n) => (rng() * n) | 0;
     const at = (k, x, y, extra) => { p.pos[k] = Object.assign({ x, y }, extra || {}); };
     const line = (lineY) => { p.lineY = lineY; DEFS.forEach((k, j) => at(k, lanes[j], lineY + rand(-0.25, 0.25))); };
     const lag = (j, d) => { const k = DEFS[j]; p.laggers.push(k); p.pos[k].y = p.lineY + d; };
@@ -196,35 +214,40 @@
     at('ogk', rand(-2, 2), -GL + 1.5, { idle: true });
 
     if (kind === 'through' || kind === 'through2' || kind === 'two') {
-      line(rand(25, 29));
-      const li = m > 0 ? 2 : 1;
+      line(rand(23, 30));
+      const li = pick(4);
+      const side = li === 0 ? 1 : li === 3 ? -1 : m; // もう一人の遅れている DF の側
       if (kind === 'through2') {
         const d0 = 2.9 - 0.6 * lv;
-        lag(li, d0); lag(li + m, d0 - 0.3);
+        lag(li, d0); lag(li + side, d0 - 0.3);
       } else lag(li, kind === 'two' ? 3.0 : 3.4 - 1.0 * lv);
-      const rx = lanes[li] + m * rand(0.5, 2);
-      at('R', rx, p.lineY - 5, { hold: 0.45, laneX: rx * 0.85 });
+      const rx = lanes[li] + side * rand(0.5, 2);
+      at('R', rx, p.lineY - rand(4, 7), { hold: 0.45, laneX: rx * 0.85 });
+      const away = lanes[li] > 0 ? -1 : 1; // R から離れた側
       if (kind === 'two') {
         // おとり: 最初からオフサイドポジションでうろうろしている(プレーに関わらなければ反則ではない)
-        at('R2', -m * rand(8, 13), p.lineY + 3.0 + rand(1.6, 2.4), { loiter: true }); // 遅れている DF よりも奥
+        at('R2', clamp(lanes[li] + away * rand(9, 16), -HX + 4, HX - 4), p.lineY + 3.0 + rand(1.6, 2.4), { loiter: true }); // 遅れている DF よりも奥
         p.decoy = 'R2';
-      } else at('R2', -m * rand(13, 18), p.lineY - 4, { hold: 1.6, laneX: -m * 15 });
-      const x0 = lanes[li] * 0.25 + rand(-3, 3);
-      at('P', x0, p.lineY - 25, { to: { x: x0 + rand(-3, 3), y: p.lineY - 13.5 } });
+      } else {
+        const r2x = clamp(lanes[li] + away * rand(14, 24), -HX + 4, HX - 4);
+        at('R2', r2x, p.lineY - rand(3, 6), { hold: 1.6, laneX: r2x });
+      }
+      const x0 = lanes[li] * rand(0, 0.5) + rand(-5, 5);
+      at('P', x0, p.lineY - rand(22, 28), { to: { x: x0 + rand(-4, 4), y: p.lineY - rand(12, 16) } });
       at('S', x0 - m * 9, p.lineY - 27, { trail: { x: -m * 9, y: -2 } });
       at('m1', x0 + m * 0.8, p.lineY - 22.5, { press: { x: m * 0.8, y: 2.4 } });
       at('m2', x0 + m * 7, p.lineY - 8);
-      p.Tp = rand(2.8, 3.3);
+      p.Tp = rand(2.7, 3.4);
     } else if (kind === 'long') {
-      line(rand(13, 17));
-      const li = (rng() * 4) | 0;
+      line(rand(11, 19));
+      const li = pick(4);
       lag(li, 3.0 - 0.6 * lv);
       const rx = lanes[li] + rand(-1.5, 1.5);
       at('R', rx, p.lineY - 6, { hold: 0.45, laneX: rx * 0.8 });
       const oj = (li + 2) % 4;
       at('R2', lanes[oj], p.lineY - 4, { hold: 1.4, laneX: lanes[oj] * 0.9 });
-      const x0 = rand(-8, 8);
-      at('P', x0, -18, { to: { x: x0 + rand(-2, 2), y: -14 } });
+      const x0 = rand(-12, 12), y0 = rand(-22, -12);
+      at('P', x0, y0, { to: { x: x0 + rand(-3, 3), y: y0 + rand(2, 5) } });
       at('S', x0 + 7, -21, { trail: { x: 7, y: -3 } });
       at('m1', x0 - 0.8, -15.5, { press: { x: -0.8, y: 2.6 } });
       at('m2', lanes[(li + 1) % 4] * 0.5, p.lineY - 9);
@@ -232,63 +255,68 @@
       p.Tp = rand(2.5, 3.0);
     } else if (kind === 'throw') {
       // 奥のタッチラインからのスローイン。受け手はラインの裏にいて、マークの DF がゴール側についている
-      line(rand(31, 34));
-      const rx = -HX + rand(9, 11), ry = p.lineY + rand(3, 3.8);
+      line(rand(26, 35));
+      const rx = -HX + rand(8, 12), ry = p.lineY + rand(2.8, 4);
       at('R', rx, ry, { stay: true });
       p.pos.d1.x = rx + 0.5; p.pos.d1.y = ry + 1.5;
       p.pos.d1.follow = { k: 'R', x: 0.5, y: 1.5 };
       p.laggers.push('d1');
-      at('P', -HX - 0.35, p.lineY - 7, { thrower: true });
-      at('R2', -8, p.lineY - 2.5, { idle: true });
-      at('S', -HX + 4, p.lineY - 9, { idle: true });
-      at('m1', -HX + 6.5, p.lineY - 7.5);
+      const ty = p.lineY - rand(5, 9);
+      at('P', -HX - 0.35, ty, { thrower: true });
+      at('R2', rand(-12, -4), p.lineY - rand(2, 4), { idle: true });
+      at('S', -HX + rand(3, 6), ty - rand(1.5, 3.5), { idle: true });
+      at('m1', -HX + rand(5.5, 8), ty - rand(0, 1.5));
       at('m2', rand(-2, 2), p.lineY - 6);
-      p.noOff = 'throw'; p.passType = 'throw';
+      p.noOff = 'throw'; p.passType = 'throw'; p.hands = true;
       p.windup = 0.45;
       p.Tp = rand(2.0, 2.5);
     } else if (kind === 'cutback') {
       // 奥のサイドを突破され、ゴールライン近くからマイナスのパス(カットバック)
-      line(37);
-      at('P', -25, 27, { to: { x: -19.5, y: GL - 4.5 } });
-      p.pos.d1.x = -22.5; p.pos.d1.y = 24; p.pos.d1.follow = { k: 'P', x: 1.0, y: -5.5, v: 7 };
-      const rx = -3.5 + rand(-1, 1);
-      at('R', -2, 30, { to: { x: rx, y: GL - 8.5 } });
-      p.pos.d2.x = -4.2; p.pos.d2.y = 29.5; p.pos.d2.follow = { k: 'R', x: -2.0, y: -0.6, v: 8 };
+      line(rand(35, 38));
+      const px = rand(-27, -22), py = rand(24, 30);
+      at('P', px, py, { to: { x: rand(-21, -17), y: GL - rand(3.5, 6) } });
+      p.pos.d1.x = px + 1.0; p.pos.d1.y = py - 5.5; p.pos.d1.follow = { k: 'P', x: 1.0, y: -5.5, v: 7 };
+      const r0x = rand(-6, 2), r0y = rand(28, 32);
+      at('R', r0x, r0y, { to: { x: rand(-7, 0), y: GL - rand(7.5, 10) } });
+      p.pos.d2.x = r0x - 2.0; p.pos.d2.y = r0y - 0.6; p.pos.d2.follow = { k: 'R', x: -2.0, y: -0.6, v: 8 };
       p.laggers.push('d2');
-      p.pos.d3.y = 38.5; p.pos.d4.y = 38;
-      at('R2', 6, 33, { to: { x: 5, y: GL - 11 } });
-      at('S', -12, 25, { to: { x: -12, y: 37 } });
-      at('m1', -15, 24, { press: { x: 4, y: -9 } });
-      at('m2', 2, 26);
-      gkAt(-1.5, GL - 1.5);
+      p.pos.d3.y = p.lineY + rand(0.5, 2); p.pos.d4.y = p.lineY + rand(0.5, 2);
+      const r2x = rand(3, 9);
+      at('R2', r2x, rand(30, 35), { to: { x: r2x - rand(0, 3), y: GL - rand(10, 13) } });
+      const sx = rand(-15, -9);
+      at('S', sx, py - rand(1, 4), { to: { x: sx, y: rand(35, 39) } });
+      at('m1', px + 10, py - 3, { press: { x: 4, y: -9 } });
+      at('m2', rand(-2, 6), rand(24, 28));
+      gkAt(rand(-2.5, -0.5), GL - rand(1, 2));
       p.noOff = 'behind'; p.passType = 'cutback';
-      p.Tp = 3.3;
+      p.Tp = rand(3.1, 3.6);
     } else if (kind === 'gkout') {
       // キーパーが前に出ていて、その後ろに DF が 1 人残っている。後ろから2人目はキーパー
-      line(rand(27, 29));
-      const ci = m > 0 ? 3 : 0;
-      lag(ci, 6.0);
-      gkAt(rand(-2, 2), p.lineY + 3.7);
+      line(rand(25, 30));
+      const ci = rng() < 0.5 ? 3 : 0;
+      const gd = rand(3.3, 4.2);
+      lag(ci, gd + rand(2, 2.6));
+      gkAt(rand(-3, 3), p.lineY + gd);
       const rx = -Math.sign(lanes[ci]) * rand(9, 12);
       at('R', rx, p.lineY - 3, { hold: 0.45, laneX: rx });
       at('R2', -lanes[ci] * 0.9, p.lineY - 3, { idle: true });
-      const x0 = rand(-4, 4);
-      at('P', x0, p.lineY - 25, { to: { x: x0 + rand(-3, 3), y: p.lineY - 14 } });
+      const x0 = rand(-6, 6);
+      at('P', x0, p.lineY - rand(22, 28), { to: { x: x0 + rand(-4, 4), y: p.lineY - rand(12, 16) } });
       at('S', x0 + m * 9, p.lineY - 27, { trail: { x: m * 9, y: -2 } });
       at('m1', x0 - m * 0.8, p.lineY - 22.5, { press: { x: -m * 0.8, y: 2.4 } });
       at('m2', x0 - m * 7, p.lineY - 8);
       p.Tp = rand(2.8, 3.2);
     } else if (kind === 'ownhalf') {
       // ハーフウェーラインの近くまでラインを上げている。受け手は自陣から走り出す
-      line(rand(2.5, 4));
-      const ci = m > 0 ? 2 : 1;
-      lag(ci, 6.5);
+      line(rand(1.5, 5));
+      const ci = pick(4);
+      lag(ci, rand(6, 8));
       const rx = lanes[ci] + rand(-0.5, 0.5);
       at('R', rx, -5, { ownHalf: true, laneX: rx });
       const oj = (ci + 2) % 4;
       at('R2', lanes[oj], p.lineY - 6, { hold: 1.0, laneX: lanes[oj] });
-      const x0 = rand(-6, 6);
-      at('P', x0, -27, { to: { x: x0 + rand(-2, 2), y: -23 } });
+      const x0 = rand(-10, 10), y0 = rand(-30, -22);
+      at('P', x0, y0, { to: { x: x0 + rand(-3, 3), y: y0 + rand(3, 5) } });
       at('S', x0 - 7, -29, { trail: { x: -7, y: -2 } });
       at('m1', x0 + 0.8, -24.5, { press: { x: 0.8, y: 2.6 } });
       at('m2', lanes[oj] * 0.5, -9);
@@ -297,9 +325,9 @@
       p.Tp = rand(2.6, 3.0);
     } else if (kind === 'goalkick') {
       // 相手キーパーのゴールキック。受け手はラインの裏で待ち、マークの DF がゴール側で競る
-      line(rand(14, 17));
-      const li = (rng() * 4) | 0;
-      const rx = lanes[li] * 0.8, ry = p.lineY + 3.4;
+      line(rand(12, 19));
+      const li = pick(4);
+      const rx = lanes[li] * rand(0.6, 0.95), ry = p.lineY + rand(3, 4.2);
       at('R', rx, ry, { stay: 'still' });
       const dk = DEFS[li];
       p.pos[dk].x = rx + 0.3; p.pos[dk].y = ry + 0.72; p.pos[dk].follow = { k: 'R', x: 0.3, y: 0.72 };
@@ -314,17 +342,73 @@
       p.noOff = 'goalkick'; p.passType = 'goalkick'; p.kicker = 'ogk';
       p.windup = 0.5;
       p.Tp = rand(1.9, 2.3);
+    } else if (kind === 'corner') {
+      // 奥のコーナーからのコーナーキック。受け手はラインの裏で待ち、マークの DF がゴール側で競る
+      line(GL - rand(11, 13));
+      DEFS.forEach((k) => { p.pos[k].x *= 0.45; });
+      const li = pick(4);
+      const rx = rand(-5, 5), ry = GL - rand(7, 9.5);
+      at('R', rx, ry, { stay: 'still' });
+      const dk = DEFS[li];
+      p.pos[dk].x = rx + 0.3; p.pos[dk].y = ry + 0.72; p.pos[dk].follow = { k: 'R', x: 0.3, y: 0.72 };
+      p.laggers.push(dk);
+      at('P', -HX + 0.4, GL - 0.4, { corner: true });
+      at('S', -HX + rand(4, 6), GL - rand(2, 4), { idle: true });
+      at('R2', rand(-8, 8), GL - rand(4.5, 6), { idle: true });
+      at('m1', rand(-12, -2), GL - rand(16, 19));
+      at('m2', rand(2, 12), GL - rand(16, 19));
+      gkAt(rand(-1, 1), GL - 1);
+      p.noOff = 'corner'; p.passType = 'cross';
+      p.windup = 0.5;
+      p.Tp = rand(2.0, 2.5);
+    } else if (kind === 'offfield') {
+      // 倒れた DF がゴールラインの外にいる。その DF はゴールライン上にいるとみなすので、後ろから2人目は GK
+      line(rand(24, 30));
+      const oi = pick(4), mi = (oi + 1 + pick(3)) % 4;
+      const ok = DEFS[oi];
+      p.pos[ok].x = rand(-8, 8); p.pos[ok].y = GL + 1.6; p.pos[ok].off = true;
+      const rx = lanes[mi] * rand(0.6, 0.95), ry = p.lineY + rand(3, 4.2);
+      at('R', rx, ry, { stay: 'still' });
+      const dk = DEFS[mi];
+      p.pos[dk].x = rx + 0.3; p.pos[dk].y = ry + 0.72; p.pos[dk].follow = { k: 'R', x: 0.3, y: 0.72 };
+      p.laggers.push(dk);
+      const x0 = rand(-8, 8);
+      at('P', x0, p.lineY - rand(22, 28), { to: { x: x0 + rand(-4, 4), y: p.lineY - rand(13, 16) } });
+      at('R2', clamp(-rx + rand(-4, 4), -HX + 4, HX - 4), p.lineY - rand(3, 5), { idle: true });
+      at('S', x0 + m * 9, p.lineY - 27, { trail: { x: m * 9, y: -2 } });
+      at('m1', x0 - m * 0.8, p.lineY - 24, { press: { x: -m * 0.8, y: 2.4 } });
+      at('m2', x0 - m * 7, p.lineY - 8);
+      p.noOff = 'offField'; p.passType = 'chip';
+      p.Tp = rand(2.7, 3.3);
+    } else if (kind === 'gkthrow') {
+      // 相手キーパーが手で遠くへ投げる。スローインとちがってオフサイドがある
+      line(rand(1.5, 5));
+      const li = pick(4);
+      lag(li, 3.0 - 0.6 * lv);
+      const rx = lanes[li] + rand(-1.5, 1.5);
+      at('R', rx, p.lineY - 6, { hold: 0.45, laneX: rx * 0.8 });
+      const oj = (li + 2) % 4;
+      at('R2', lanes[oj], p.lineY - 4, { hold: 1.4, laneX: lanes[oj] * 0.9 });
+      at('ogk', rand(-6, 6), -GL + rand(13, 16), { hands: true });
+      at('P', rand(-12, 12), -20, { idle: true });
+      at('S', rand(-12, 12), -12, { idle: true });
+      at('m1', rand(-14, -4), p.lineY - rand(9, 13));
+      at('m2', rand(4, 14), p.lineY - rand(9, 13));
+      p.kicker = 'ogk'; p.passType = 'long'; p.hands = true;
+      p.windup = 0.45;
+      p.Tp = rand(2.2, 2.8);
     } else { // fk
       // 間接フリーキック。遅れている DF が 2 人。2 人とも上げないとオフサイドにならない
-      line(rand(33, 35));
-      const li = m > 0 ? 1 : 2;
+      line(rand(31, 36));
+      const li = pick(3), lj = li + 1, first = rng() < 0.5; // 隣り合う 2 人が遅れている
       const d0 = 2.4 - 0.4 * lv;
-      lag(li, d0); lag(li + m, d0 - 0.25);
-      const rx = lanes[li] + rand(-1, 1);
-      at('R', rx, p.lineY - 4, { hold: 0.45, laneX: rx * 0.8 });
-      const r2x = lanes[li + m] + m * 2;
-      at('R2', r2x, p.lineY - 4, { hold: 1.0, laneX: r2x });
-      const x0 = rand(-8, 8), y0 = p.lineY - 21;
+      lag(first ? li : lj, d0); lag(first ? lj : li, d0 - 0.25);
+      const ri = first ? li : lj, oi = first ? lj : li;
+      const rx = lanes[ri] + rand(-1, 1);
+      at('R', rx, p.lineY - rand(3, 5), { hold: 0.45, laneX: rx * 0.8 });
+      const r2x = lanes[oi] + Math.sign(lanes[oi] - lanes[ri]) * 2;
+      at('R2', r2x, p.lineY - rand(3, 5), { hold: 1.0, laneX: r2x });
+      const x0 = rand(-12, 12), y0 = p.lineY - rand(18, 25);
       at('P', x0, y0, { fk: true });
       at('S', x0 + 1.5, y0 - 0.6, { idle: true });
       at('m1', x0 - 0.4, y0 + 9.15, { idle: true });
@@ -362,13 +446,15 @@
     a.ar = actor(-HX - 1.1, p.lineY, Math.PI / 2);
     state.actors = a;
     const kk = a[p.kicker];
-    if (p.passType === 'throw') {
+    for (const k of DEFS) if (a[k].cfg.off) { a[k].off = true; a[k].mode = 'down'; a[k].face = rng() * 6; }
+    if (p.hands) {
+      // スローイン・キーパーのスロー: 両手で頭の上にボールを持つ
       kk.mode = 'throw'; kk.windT = 0; kk.thrown = false;
-      kk.face = Math.atan2(1, 0.25);
-      state.ball = { holder: 'P', overHead: true, x: kk.x, y: kk.y, z: 2.2, vx: 0, vy: 0, vz: 0, still: true, spinX: 0, spinY: 0 };
+      kk.face = p.passType === 'throw' ? Math.atan2(1, 0.25) : Math.atan2(a.R.x - kk.x, a.R.y - kk.y);
+      state.ball = { holder: p.kicker, overHead: true, x: kk.x, y: kk.y, z: 2.2, vx: 0, vy: 0, vz: 0, still: true, spinX: 0, spinY: 0 };
     } else {
       if (kk.cfg.to) kk.face = Math.atan2(kk.cfg.to.x - kk.x, kk.cfg.to.y - kk.y);
-      if (p.passType === 'fk' || p.passType === 'goalkick') kk.face = Math.atan2(a.R.x - kk.x, a.R.y - kk.y);
+      if (p.passType === 'fk' || p.passType in AERIAL && !kk.cfg.to) kk.face = Math.atan2(a.R.x - kk.x, a.R.y - kk.y);
       state.ball = { holder: null, x: kk.x + Math.sin(kk.face) * 0.6, y: kk.y + Math.cos(kk.face) * 0.6, z: R, vx: 0, vy: 0, vz: 0, still: true, spinX: 0, spinY: 0 };
     }
   }
@@ -456,7 +542,8 @@
   // 後ろから2人目の守備側の選手(GK も数える)。ゴールラインに近い順に並べた 2 番目
   function secondLast() {
     const a = state.actors;
-    const list = HOME.map((k) => ({ k, y: a[k].y })).sort((p, q) => q.y - p.y);
+    // 許可なくピッチの外に出た守備側の選手は、ゴールライン上にいるとみなす
+    const list = HOME.map((k) => ({ k, y: a[k].off ? GL : a[k].y })).sort((p, q) => q.y - p.y);
     return list[1];
   }
 
@@ -469,7 +556,7 @@
     const ahead = r.y > b.y;          // ボールより前
     const level = Math.abs(gap) < LEVEL;
     const offPos = inOpp && ahead && gap >= LEVEL;
-    const exempt = p.noOff === 'throw' || p.noOff === 'goalkick'; // スローイン・ゴールキックからはオフサイドなし
+    const exempt = p.noOff === 'throw' || p.noOff === 'goalkick' || p.noOff === 'corner'; // スローイン・ゴールキック・コーナーキックからはオフサイドなし
     let decoyOff = false;
     if (p.decoy) { const d = a[p.decoy]; decoyOff = d.y > 0 && d.y > b.y && d.y - sl.y >= LEVEL; }
     return { recvY: r.y, ballY: b.y, sl, gap, inOpp, ahead, level, offPos, exempt, offence: offPos && !exempt, decoyOff, relT: state.buildT };
@@ -487,7 +574,7 @@
     const p = state.play;
     if ((state.phase !== 'build' && state.phase !== 'var') || state.paused || !k) return;
     const d = state.actors[k];
-    if (!d || d.step) return;
+    if (!d || d.step || d.off) return;
     // パスのあと(スローモーション中)に押しても、判定はもう終わっている
     const tt = state.phase === 'build' ? state.buildT : state.buildT + state.runT + 0.001;
     d.step = { t: tt, y: Math.min(d.y, p.lineY) - STEP_PAST, done: null };
@@ -561,6 +648,7 @@
         faceTo(d, b.x, b.y); d.crouch = true;
         continue;
       }
+      if (d.off) { d.vx = d.vy = 0; integrate(d, dt, false); continue; } // ピッチの外で倒れている
       if (d.step) { doStep(d, dt); continue; }
       if (c.follow || d.follow !== undefined && d.follow) {
         const f = d.follow || c.follow, q = a[f.k];
@@ -612,13 +700,19 @@
     // 受け手の走る先へ
     const lead = (T) => Math.max(2, RUN_V * T - RUN_V * RUN_V / (2 * RUN_ACC));
     let tx, ty, T, z0 = b.z, zt = R;
-    if (p.passType === 'throw') {
-      tx = r.x + 0.4; ty = r.y + 1.5; T = 0.95; z0 = 2.25; zt = 1.8; // 受け手の頭を越えて、マークの DF の頭へ
+    if (p.hands) {
+      // 頭の上から投げる(判定はボールが手から離れた地点)
+      z0 = 2.25;
       b.holder = null; b.overHead = false;
-      const h = state.actors.P; b.x = h.x + 0.3; b.y = h.y; b.z = z0;
+      b.x = kk.x + Math.sin(kk.face) * 0.3; b.y = kk.y + Math.cos(kk.face) * 0.3; b.z = z0;
       kk.thrown = true; kk.t = 0;
-    } else if (p.passType === 'goalkick') {
-      tx = r.x + 0.3; ty = r.y + 0.75; T = 3.1; zt = 1.9; // 受け手の頭のすぐ後ろ(マークの DF がいなければ受け手の頭)
+    }
+    if (p.passType === 'throw') {
+      tx = r.x + 0.4; ty = r.y + 1.5; T = 0.95; zt = 1.8; // 受け手の頭を越えて、マークの DF の頭へ
+    } else if (p.passType in AERIAL) {
+      // 受け手の頭のすぐ後ろ(マークの DF がいなければ受け手の頭)
+      tx = r.x + 0.3; ty = r.y + 0.75; zt = 1.9;
+      T = AERIAL[p.passType] || clamp(Math.hypot(tx - b.x, ty - b.y) / 15, 1.1, 1.9);
     } else if (p.passType === 'cutback') {
       tx = r.x + 0.3; ty = r.y + 0.5;
       T = Math.hypot(tx - b.x, ty - b.y) / 18;
@@ -640,7 +734,7 @@
     }
     b.vx = (tx - b.x) / T; b.vy = (ty - b.y) / T; b.vz = (zt - z0 + 0.5 * G * T * T) / T;
     b.still = false; b.bounces = 0;
-    if (p.passType !== 'throw') { kk.t = 0.17; kk.kickK = 1; Sound.kick(p.passType === 'cutback' ? 0.7 : 1); } else Sound.bump();
+    if (!p.hands) { kk.t = 0.17; kk.kickK = 1; Sound.kick(p.passType === 'cutback' ? 0.7 : 1); } else Sound.bump();
     state.pass = { x: tx, y: ty, T };
     r.recvGo = { x: tx, y: ty };
     state.phase = 'var';
@@ -689,6 +783,7 @@
 
     // 自分たち
     for (const k of HOME) {
+      if (state.actors[k].off) continue; // ピッチの外で倒れている
       const d = a[k];
       if (state.phase === 'result') { stopAnim(d, dt, 5); continue; }
       if (k === 'gk') {
@@ -710,9 +805,10 @@
       }
       if (d.react == null) d.react = HOME_REACT + (state.pass.y > d.y + 2 ? TURN_T : 0);
       // スローイン・ゴールキックの競り合いはマークの DF だけ。ほかはラインを保ってこぼれ球に備える
-      const contest = !(p.passType === 'throw' || p.passType === 'goalkick') || (d.cfg.follow && d.cfg.follow.k === p.receiver);
+      const contest = !a[p.receiver].cfg.stay || (d.cfg.follow && d.cfg.follow.k === p.receiver);
       if (rt < d.react || !contest) { stopAnim(d, dt, 6); faceTo(d, b.x, b.y); continue; }
-      const s = interceptPoint(d, path, HOME_V, 1.9);
+      const guard = p.noOff && p.laggers.includes(k); // カバーの DF はジャンプして頭で競る
+      const s = interceptPoint(d, path, HOME_V, guard ? 2.6 : 1.9);
       moveTo(d, s.x, s.y, HOME_V, dt, HOME_ACC, 8); integrate(d, dt);
     }
     separate(r);
@@ -736,6 +832,7 @@
     };
     if (rt > 0.12) cand(p.receiver, 0.85, 2.0);
     for (const k of [...DEFS, 'gk']) {
+      if (state.actors[k].off) continue; // ピッチの外で倒れている
       const d = a[k];
       if (k === 'gk') {
         if (rt > GK_REACT && !J.offence && b.y > GL - PEN_D && Math.abs(b.x) < PEN_X) cand(k, 0.95, 2.6);
@@ -743,7 +840,7 @@
       }
       if (d.react == null || rt < d.react || d.step || J.offence) continue;
       // オフサイドにならない場面でカバーに残った DF は、体を入れて競り合いに勝つ
-      if (p.noOff && p.laggers.includes(k) && Math.hypot(b.x - d.x, b.y - d.y) < 1.6 && b.z < 2.2) { best = k; bd = -1; continue; }
+      if (p.noOff && p.laggers.includes(k) && Math.hypot(b.x - d.x, b.y - d.y) < 1.6 && b.z < 2.6) { best = k; bd = -1; continue; }
       cand(k, b.z < 0.6 ? 0.95 : 0.75, 2.0);
     }
     // オフサイドポジションの受け手がボールに向かってプレーしようとした(関与した)ら旗
@@ -767,6 +864,7 @@
   // 受け手と DF が重ならないように押し合う
   function separate(r) {
     for (const k of HOME) {
+      if (state.actors[k].off) continue; // ピッチの外で倒れている
       const d = state.actors[k];
       const dx = d.x - r.x, dy = d.y - r.y, dd = Math.hypot(dx, dy);
       if (dd > 0.01 && dd < 0.7) {
@@ -802,6 +900,7 @@
       moveTo(gk, g.x * 3, GL + g.y * 3, 4, dt, 10); integrate(gk, dt, false); faceTo(gk, b.x, b.y); gk.crouch = true;
     } else if (gk.t < 0.55) integrate(gk, dt, false); else stopAnim(gk, dt, 6);
     for (const k of HOME) {
+      if (state.actors[k].off) continue; // ピッチの外で倒れている
       if (k === 'gk') continue;
       const d = a[k];
       if (d.step) { stopAnim(d, dt, 6); continue; }
@@ -904,7 +1003,7 @@
       popup(t('res.goal'), '#ff6b6b', 56, 0, 2.6);
       Sound.sigh(1.2);
       setMode(a[p.receiver], 'celebrate');
-      for (const k of DEFS) setMode(a[k], 'sad');
+      for (const k of DEFS) if (!a[k].off) setMode(a[k], 'sad');
       setTimeout(() => Sound.whistle(0.3), 300);
     }
     state.lastResult = { ok, kind, lines };
@@ -922,7 +1021,7 @@
     const tapped = (k) => !!a[k].step;
     if (kind === 'offside') {
       out.push(t('why.offside', { n, d, g: fmtGap(J.gap) }));
-      out.push(t(p.kind === 'fk' ? 'why.fk' : p.kind === 'long' ? 'why.long' : p.kind === 'gkout' ? 'why.gkCounted' : 'why.flag'));
+      out.push(t(({ fk: 'why.fk', long: 'why.long', gkout: 'why.gkCounted', gkthrow: 'why.gkthrow' })[p.kind] || 'why.flag'));
       return out;
     }
     if (p.noOff) {
@@ -1128,7 +1227,7 @@
     }
     cy = clamp(cy, -GL + 18, GL - 14);
     // 奥のタッチライン沿いの場面(スローイン・サイド突破)は、カメラを奥へ寄せる
-    const vx = p && (p.kind === 'throw' || p.kind === 'cutback') && state.phase !== 'attack' ? -11 : 0;
+    const vx = p && (p.kind === 'throw' || p.kind === 'cutback' || p.kind === 'corner') && state.phase !== 'attack' ? -11 : 0;
     state.view = { x: vx, y: cy, fx: -1, fy: 0, back, h, pitch, turn, fov, cut: !!state.viewCut };
     state.viewCut = false;
   }
@@ -1224,6 +1323,7 @@
     const list = [];
     for (const k of DEFS) {
       const d = a[k];
+      if (d.off) continue;
       const head = Scene3D.project(d.x, d.y, 1.95), foot = Scene3D.project(d.x, d.y, 0);
       if (head.behind) continue;
       list.push({ k, x: head.x, y: head.y - r - 14, hx: head.x, hy: head.y, fy: foot.y, r });
@@ -1394,7 +1494,7 @@
     const p = state.play;
     const lines = [t(m.key)];
     if (state.nav) {
-      const nk = p.noOff ? 'nav.' + p.noOff : p.kind === 'gkout' ? 'nav.gk' : p.laggers.length > 1 ? 'nav.trap2' : 'nav.trap';
+      const nk = p.noOff ? 'nav.' + p.noOff : p.kind === 'gkout' ? 'nav.gk' : p.kind === 'gkthrow' ? 'nav.gkthrow' : p.laggers.length > 1 ? 'nav.trap2' : 'nav.trap';
       lines.push(t(nk));
     }
     ctx.save();
@@ -1759,7 +1859,7 @@
   // テスト・デバッグ用フック
   const api = window.Offside = {
     hold: false, forceKind: null,
-    state, newGame, update, DT, TOTAL, KINDS,
+    state, newGame, update, DT, TOTAL, KINDS, makeOrder,
     setBot(fn) { bot = fn; },
     tap: tapDef, secondLast, judge,
     startAt(i, seed) { newGame(seed); state.index = i; startPlay(); },
