@@ -1492,24 +1492,27 @@
     const a = Math.min(1, (state.phaseT - 0.5) / 0.3);
     ctx.save();
     ctx.globalAlpha = a;
-    ctx.font = 'bold 18px sans-serif';
-    const bw = Math.min(W - 40, 880), maxw = bw - 40;
+    // スマホは画面が小さいので、文字を大きく・枠を広くする
+    const fs = isTouch ? 30 : 18, lh = Math.round(fs * 1.4);
+    ctx.font = `bold ${fs}px sans-serif`;
+    const bw = Math.min(W - 40, isTouch ? 1240 : 880), maxw = bw - 48;
     const rows = [];
     for (const l of res.lines) rows.push(...wrapText(l, maxw));
-    const bh = 26 + rows.length * 26 + 22;
-    const by = H - bh - 16;
-    ctx.fillStyle = 'rgba(6,12,28,0.86)';
+    const sk = isTouch ? 18 : 13;
+    const bh = 20 + rows.length * lh + sk + 14;
+    const by = H - bh - 12;
+    ctx.fillStyle = 'rgba(6,12,28,0.88)';
     ctx.fillRect(W / 2 - bw / 2, by, bw, bh);
     ctx.fillStyle = res.ok ? '#ffe14d' : '#ff6b6b';
     ctx.fillRect(W / 2 - bw / 2, by, 6, bh);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#fff';
-    rows.forEach((r, i) => ctx.fillText(r, W / 2 - bw / 2 + 24, by + 30 + i * 26));
+    rows.forEach((r, i) => ctx.fillText(r, W / 2 - bw / 2 + 26, by + 14 + fs + i * lh));
     if (state.phaseT > 1.2 && Math.floor(state.time * 2) % 2 === 0) {
       ctx.textAlign = 'right';
-      ctx.font = 'bold 13px sans-serif';
+      ctx.font = `bold ${sk}px sans-serif`;
       ctx.fillStyle = '#ffcc80';
-      ctx.fillText(t(isTouch ? 'skip' : 'skip.key'), W / 2 + bw / 2 - 12, by + bh - 8);
+      ctx.fillText(t(isTouch ? 'skip' : 'skip.key'), W / 2 + bw / 2 - 14, by + bh - 9);
     }
     ctx.restore();
   }
