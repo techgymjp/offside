@@ -10,7 +10,7 @@ window.Ads = (() => {
     },
     // 本番の広告ユニット(AdMob の「オフサイドトラップ」)。ID が届いていない種類は空。空の種類は本番ビルド(Google Play 用)では出さない
     production: {
-      interstitial: '',
+      interstitial: 'ca-app-pub-6411535997477460/8019207693',
       rewarded: '',
       banner: 'ca-app-pub-6411535997477460/2266645578',
     },
