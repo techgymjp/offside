@@ -243,30 +243,37 @@ html, body {
   color: #1b2440;
 }
 
-/* タイトル画面の「オフサイドのルール」ボタン */
-.rulesBtn {
+/* タイトル画面の下の「操作説明」「オフサイドのルール」ボタン(アプリのバナー広告の上に出す) */
+#titleMenu {
   position: absolute;
   left: 50%;
-  bottom: 8px;
+  bottom: 64px;
   transform: translateX(-50%);
   z-index: 2;
+  display: flex;
+  gap: 12px;
   font-family: sans-serif;
-  font-size: clamp(12px, 2.4vh, 16px);
+}
+
+#titleMenu[hidden] {
+  display: none;
+}
+
+.rulesBtn {
+  font-family: sans-serif;
+  font-size: clamp(14px, 3.6vh, 20px);
   font-weight: 800;
-  padding: 6px 16px;
-  border-radius: 18px;
-  border: 1px solid #ffe14d;
-  background: rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  padding: 8px 20px;
+  border-radius: 22px;
+  border: 2px solid #ffe14d;
+  background: rgba(0, 0, 0, 0.6);
   color: #ffe14d;
   cursor: pointer;
 }
 
-.rulesBtn[hidden] {
-  display: none;
-}
-
-/* ルールの説明(キャンバスの上に重ねる) */
-#rules {
+/* 操作説明・ルールのページ(キャンバスの上に重ねる。下はアプリのバナー広告のぶん空ける) */
+.page {
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -277,14 +284,15 @@ html, body {
   font-family: sans-serif;
 }
 
-#rules[hidden] {
+.page[hidden] {
   display: none;
 }
 
-#rules .box {
+.page .box {
   box-sizing: border-box;
   width: min(860px, 94%);
-  max-height: 92%;
+  max-height: calc(100% - 70px);
+  margin-bottom: 58px;
   overflow-y: auto;
   padding: 14px 22px;
   border-radius: 14px;
@@ -294,45 +302,84 @@ html, body {
   touch-action: pan-y;
 }
 
-#rules h2 {
+.page h2 {
   margin: 0 0 8px;
   font-size: clamp(16px, 3.4vh, 22px);
   color: #ffe14d;
 }
 
-#rules ol {
+.page ol {
   margin: 0;
   padding-left: 1.4em;
   font-size: clamp(12px, 2.5vh, 15px);
   line-height: 1.5;
 }
 
-#rules li {
+.page li {
   margin-bottom: 4px;
 }
 
-#rules b {
+.page b {
   color: #9fe8ff;
 }
 
-#rules .src {
+.page .src {
   margin: 8px 0;
   font-size: 12px;
   color: #b0bec5;
 }
 
-#rules .sbtn {
-  display: block;
-  margin: 0 auto;
+/* 見出しの横に「プレイする」「タイトルに戻る」(スクロールしなくても押せるように) */
+.page .head {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: -14px -22px 8px;
+  padding: 10px 22px;
+  background: #101a33;
+  border-bottom: 1px solid rgba(255, 225, 77, 0.4);
+}
+
+.page .head h2 {
+  margin: 0;
+}
+
+.page .row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.page .sbtn {
   border: 0;
   border-radius: 10px;
-  padding: 8px 40px;
+  padding: 9px 26px;
   font: inherit;
   font-weight: 900;
-  font-size: clamp(14px, 3vh, 17px);
+  font-size: clamp(14px, 3.4vh, 19px);
   cursor: pointer;
+  background: #dfe7f7;
+  color: #1b2440;
+}
+
+.page .sbtn.play {
   background: linear-gradient(#ffe36b, #ffb300);
   color: #1b1200;
+}
+
+/* 操作説明は大きな文字で */
+#howto ol {
+  font-size: clamp(15px, 4.2vh, 22px);
+  line-height: 1.45;
+}
+
+#howto li {
+  margin-bottom: 6px;
 }
 
 /* 失敗したときの「広告を見てこのプレーをやり直す」(アプリのみ) */

@@ -33,5 +33,6 @@ This game supports Japanese and English (auto-selected from the device language,
 - ビルドは GitHub Actions(`.github/workflows/android.yml`)。クラウドの Claude Code では Android SDK を入れられない
 - 動作確認用 APK のリリース画面: https://github.com/techgymjp/offside/releases/tag/android-latest (QR: `docs/apk-qr.png`)
 - 広告は `ads.js`(本番の広告ユニット ID は `UNITS.production`)、AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `admob_app_id`
-- 広告を出す場面: バナーはタイトル・ポーズ・結果画面だけ、全画面広告は「もう一度」「タイトルへ」「再開」のたび、リワード広告は失点したプレーのやり直し(1 ゲーム 5 回)
+- 広告を出す場面: バナーはタイトル(操作説明・ルールのページを含む)・ポーズ・結果画面だけ、全画面広告はプレイを始めるとき・「もう一度」「タイトルへ」・操作説明/ルールのページから「タイトルに戻る」・「再開」のたび、リワード広告は失点したプレーのやり直し(1 ゲーム 5 回)
+- トップページは大きな文字だけ。操作説明は別ページ(`#howto`)、ルールも別ページ(`#rules`)
 - 署名鍵(upload.jks)やパスワードは、チャットに貼らない・コミットしない(GitHub Secrets に入れる)

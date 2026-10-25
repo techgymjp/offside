@@ -1187,7 +1187,7 @@
   function update(dt) {
     state.time += dt;
     if (state.phase === 'title') {
-      if (pressed.start && rulesEl.hidden) { pressed.start = false; newGame(); }
+      if (pressed.start && rulesEl.hidden && howtoEl.hidden) { pressed.start = false; retry(); } // プレイする前に全画面広告
       pressed.start = false;
       return;
     }
@@ -1761,16 +1761,12 @@
   function drawTitle() {
     ctx.fillStyle = 'rgba(8,14,20,0.6)';
     ctx.fillRect(0, 0, W, H);
-    centerText(t('title.name'), 130, 76, '#ffe14d', '900');
-    centerText(t('title.sub'), 182, 24);
-    ctx.font = '16px sans-serif';
-    ctx.fillStyle = '#e6e6e6';
-    ctx.textAlign = 'center';
-    const lines = [1, 2, 3, 4, 5, 6].map((i) => t(`help.${isTouch ? 'touch' : 'key'}.${i}`));
-    lines.forEach((l, i) => ctx.fillText(l, W / 2, 232 + i * 30, W - 50));
-    if (state.best) centerText(t('title.best', { c: state.best.ok, t: TOTAL, s: state.best.score }), 430, 20, '#9fe8ff');
-    if (Math.floor(state.time * 2) % 2 === 0) centerText(t(isTouch ? 'title.start.touch' : 'title.start.key'), 492, 30, '#ffffff');
-    centerText(t('title.sound'), 534, 14, '#cfd8dc', 'normal');
+    // 操作説明は別のページ(下の「操作説明」ボタン)。トップは大きな文字だけにする
+    centerText(t('title.name'), 168, 104, '#ffe14d', '900');
+    centerText(t('title.sub'), 236, 32);
+    if (state.best) centerText(t('title.best', { c: state.best.ok, t: TOTAL, s: state.best.score }), 300, 26, '#9fe8ff');
+    if (Math.floor(state.time * 2) % 2 === 0) centerText(t(isTouch ? 'title.start.touch' : 'title.start.key'), 380, 42, '#ffffff', '900');
+    centerText(t('title.sound'), 430, 18, '#cfd8dc', 'normal');
   }
 
   function rankOf(c) {
@@ -2038,7 +2034,7 @@
   // Android の戻るボタン: プレイ中はポーズ(ポーズ中なら再開)、タイトル・結果画面ではアプリを閉じる
   if (plugin('App')) {
     plugin('App').addListener('backButton', () => {
-      if (!rulesEl.hidden) rulesEl.hidden = true;
+      if (!rulesEl.hidden || !howtoEl.hidden) closePage();
       else if (state.phase === 'title' || state.phase === 'over') plugin('App').exitApp();
       else if (state.paused) resumeFromPause();
       else state.paused = true;
@@ -2103,21 +2099,34 @@
     startPlay();
   });
 
-  // ---------- バナー広告: タイトル画面・ポーズ画面・結果画面だけ(プレイ中は操作ボタンと重なるので出さない) ----------
+  // ---------- バナー広告: タイトル画面(操作説明・ルールのページを含む)・ポーズ画面・結果画面だけ(プレイ中は操作ボタンと重なるので出さない) ----------
   function updateBanner() {
     const paused = state.paused && state.phase !== 'title' && state.phase !== 'over';
-    Ads.setBanner((state.phase === 'title' || state.phase === 'over' || paused) && !isPortrait());
+    Ads.setBanner((state.phase === 'title' || state.phase === 'over' || paused || !howtoEl.hidden) && !isPortrait()); // 操作説明のページにも出す
   }
 
   // タイトル画面の下に、バージョン(アプリ版)・プライバシーポリシー・広告の設定(EU など)と「オフサイドのルール」
   const legalEl = $id('legal');
-  const rulesBtn = $id('rulesBtn'), rulesEl = $id('rules');
-  for (const el of [legalEl, rulesBtn, rulesEl]) for (const ev of ['pointerdown', 'pointerup', 'keydown']) el.addEventListener(ev, (e) => e.stopPropagation());
-  rulesBtn.addEventListener('click', () => { audio(); rulesEl.hidden = false; });
+  const menuEl = $id('titleMenu'), rulesEl = $id('rules'), howtoEl = $id('howto');
+  for (const el of [legalEl, menuEl, rulesEl, howtoEl]) for (const ev of ['pointerdown', 'pointerup', 'keydown']) el.addEventListener(ev, (e) => e.stopPropagation());
+  $id('rulesBtn').addEventListener('click', () => { audio(); rulesEl.hidden = false; });
+  // 操作説明のページ(スマホとキーボードで文が違う)
+  function fillHowto() {
+    $id('howtoList').innerHTML = [1, 2, 3, 4, 5, 6].map((i) => `<li>${t(`help.${isTouch ? 'touch' : 'key'}.${i}`)}</li>`).join('');
+  }
+  fillHowto();
+  I18N.onChange(fillHowto);
+  $id('howtoBtn').addEventListener('click', () => { audio(); howtoEl.hidden = false; });
+  // ページを閉じてタイトルに戻るときと、ページからプレイするときは全画面広告
+  function closePage() { withInterstitial(() => { rulesEl.hidden = true; howtoEl.hidden = true; }); }
+  function playFromPage() { withInterstitial(() => { rulesEl.hidden = true; howtoEl.hidden = true; closeRedo(); newGame(); }); }
+  $id('howtoBack').addEventListener('click', () => { audio(); closePage(); });
+  $id('howtoPlay').addEventListener('click', () => { audio(); playFromPage(); });
+  $id('rulesPlay').addEventListener('click', () => { audio(); playFromPage(); });
   if (window.APP_VERSION && window.APP_VERSION !== 'dev') $id('buildInfo').textContent = window.APP_VERSION;
   Ads.initDone.then(() => { if (Ads.privacyOptionsRequired) $id('adPrivacy').hidden = false; });
   $id('adPrivacyLink').addEventListener('click', (e) => { e.preventDefault(); Ads.showPrivacyOptions(); });
-  $id('rulesClose').addEventListener('click', () => { rulesEl.hidden = true; });
+  $id('rulesClose').addEventListener('click', () => { audio(); closePage(); });
 
   // タイトル画面の言語切り替え
   const langEl = document.getElementById('langSel');
@@ -2127,8 +2136,8 @@
   I18N.apply();
   function updateLangVisibility() {
     const show = state.phase === 'title';
-    if (show === langEl.hidden) { langEl.hidden = !show; legalEl.hidden = !show; rulesBtn.hidden = !show; }
-    if (!show && !rulesEl.hidden) rulesEl.hidden = true;
+    if (show === langEl.hidden) { langEl.hidden = !show; legalEl.hidden = !show; menuEl.hidden = !show; }
+    if (!show) { rulesEl.hidden = true; howtoEl.hidden = true; }
   }
 
   // タイトル画面の背景: ランダムな場面の並びを見せておく

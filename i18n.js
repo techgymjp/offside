@@ -11,7 +11,7 @@ window.I18N = (() => {
       'legal.adSettings': '広告の設定',
       'url.privacy': 'https://techgym.jp/privacy-policy/',
       'rules.btn': '📘 オフサイドのルール',
-      'rules.close': '閉じる',
+      'howto.btn': '🎮 操作説明', 'howto.title': '操作説明', 'howto.play': '▶ プレイする', 'howto.back': 'タイトルに戻る',
       'nav.btn': 'ナビ {s}',
 
       'title.name': 'オフサイドトラップ',
@@ -149,7 +149,7 @@ window.I18N = (() => {
       'legal.adSettings': 'Ad settings',
       'url.privacy': 'https://techgym.jp/privacy-policy-en/',
       'rules.btn': '📘 Offside rules',
-      'rules.close': 'Close',
+      'howto.btn': '🎮 How to play', 'howto.title': 'How to play', 'howto.play': '▶ Play', 'howto.back': 'Back to title',
       'nav.btn': 'NAV {s}',
 
       'title.name': 'OFFSIDE TRAP',
