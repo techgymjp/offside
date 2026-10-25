@@ -8,10 +8,10 @@ window.Ads = (() => {
       rewarded: 'ca-app-pub-3940256099942544/5224354917',
       banner: 'ca-app-pub-3940256099942544/6300978111',
     },
-    // 本番の広告ユニット(AdMob の「オフサイドトラップ」)。ID が届いていない種類は空。空の種類は本番ビルド(Google Play 用)では出さない
+    // 本番の広告ユニット(AdMob の「オフサイドトラップ」)。空の種類は本番ビルド(Google Play 用)では出さない
     production: {
       interstitial: 'ca-app-pub-6411535997477460/8019207693',
-      rewarded: '',
+      rewarded: 'ca-app-pub-6411535997477460/6706126023',
       banner: 'ca-app-pub-6411535997477460/2266645578',
     },
   };
