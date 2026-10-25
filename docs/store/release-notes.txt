@@ -10,11 +10,11 @@
 </ja-JP>
 <en-US>
 Offside Trap is here!
-• A 3D football game: step up as the pass is played and catch them offside
-• Judged at the kick, with a VAR-style line, the gap in cm and the assistant's flag
+• 3D football: step up as the pass is played and catch them offside
+• Judged at the kick: VAR-style line, gap in cm, assistant's flag
 • No offside from throw-ins, goal kicks or corners: defend those with MARK
 • Step up too many and they run into the space
 • 13 random situations, each result explained with the real Law 11
 • Conceded? Watch an ad to replay the same attack (up to 5 per game)
-• How-to and rules pages, NAV help (1.5x points without it), English and Japanese
+• How-to and rules pages, NAV help (1.5x points without), EN/JP
 </en-US>
