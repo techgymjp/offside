@@ -28,6 +28,7 @@
   const VAR_T = 1.3, VAR_K = 0.22;     // パスの瞬間のスローモーション(実時間・倍率)
   // 「◯プレー目」と場面の表示は READY_SHOW 秒で消え(最後の READY_FADE 秒でフェード)、少し間をおいて READY_T 秒に笛が鳴ってプレーが始まる
   const READY_SHOW = 2.3, READY_FADE = 0.5, READY_T = 3.1;
+  const EXTRA_PEN = 300;               // オフサイドを取る場面で、上げる必要のない DF を 1 人上げるごとの減点
   const NO_NAV_K = 1.5;               // ナビなしで守ったときの得点の倍率
   const HUD_K = 1.4;                   // スマホの左上の成績の拡大率
   const DT = 1 / 120;
@@ -211,7 +212,7 @@
       windup: 0.42 - 0.12 * lv,      // パスの振りかぶり(見てから反応できる時間)
       noOff: null,                   // オフサイドにならない場面: 'throw' | 'goalkick' | 'behind' | 'ownHalf'
       kicker: 'P', passType: 'through', receiver: 'R', decoy: null,
-      laggers: [], depth: {}, pos: {}, Tp: 3,
+      laggers: [], depth: {}, pos: {}, Tp: 3, extra: [], gap: null,
     };
     // DF 4 人の並び: 幅も左右の位置も毎回変わる
     const width = rand(30, 40), cx = rand(-4, 4);
@@ -564,6 +565,12 @@
     return list[1];
   }
 
+  // その選手がいまオフサイドポジションにいるか
+  function inOffsidePos(k) {
+    const q = state.actors[k];
+    return q.y > 0 && q.y > state.ball.y && q.y - secondLast().y >= LEVEL;
+  }
+
   // ボールが蹴られた瞬間に判定する
   function judge() {
     const p = state.play, a = state.actors, r = a[p.receiver], b = state.ball;
@@ -598,6 +605,11 @@
     d.follow = null;
     state.taps.push({ k, t: tt });
     Sound.step();
+    // オフサイドを取る場面で、遅れていない DF を上げた: 減点し、そのスペースへ中盤の選手(7番)が走り込む
+    if (!p.noOff && !p.laggers.includes(k) && state.phase === 'build') {
+      p.extra.push(k);
+      if (!p.gap) p.gap = { k, x: d.x };
+    }
   }
 
   // ---------- 「マーク」: 狙われている選手に体を寄せる ----------
@@ -649,7 +661,10 @@
     for (const k of ['P', 'R', 'R2', 'S', 'ogk']) {
       if (k === p.kicker) continue;
       const q = a[k], c = q.cfg;
-      if (c.hold != null) holdLine(q, c.hold, dt);
+      if (k === 'S' && p.gap) {
+        // 余計に上げた DF が空けたスペースへ、ラインの手前(オンサイド)から走り込む
+        moveTo(q, p.gap.x, Math.min(p.lineY - 3, state.ball.y + 6), 8, dt, 12); integrate(q, dt);
+      } else if (c.hold != null) holdLine(q, c.hold, dt);
       else if (c.ownHalf) { moveTo(q, c.laneX, -0.9, 5, dt, 10); integrate(q, dt, false); q.face = 0; }
       else if (c.to) {
         const remain = Math.max(0.3, p.Tp - 0.5 - state.buildT);
@@ -733,8 +748,13 @@
 
   // ---------- パス ----------
   function release() {
-    const p = state.play, a = state.actors, b = state.ball, kk = a[p.kicker], r = a[p.receiver];
+    const p = state.play, a = state.actors, b = state.ball, kk = a[p.kicker];
     state.released = true;
+    // 余計に上げた DF がいれば、パサーはそのスペースに走り込んだオンサイドの 7 番を選ぶことがある(1 人なら半分、2 人以上なら必ず)
+    if (p.gap && p.kicker === 'P' && !p.hands && !inOffsidePos('S') && rng() < (p.extra.length >= 2 ? 1 : 0.5)) {
+      p.exploited = p.receiver; p.receiver = 'S';
+    }
+    const r = a[p.receiver];
     state.judge = judge();
     // 受け手の走る先へ
     const lead = (T) => Math.max(2, RUN_V * T - RUN_V * RUN_V / (2 * RUN_ACC));
@@ -990,6 +1010,10 @@
     if (k === 'gk') return t('who.gk');
     return t('who.num', { n: NUM[k] });
   }
+  // 上げる必要があった DF(遅れていた DF)
+  function needList() {
+    return state.play.laggers.map(who).join(t('who.join'));
+  }
   function fmtGap(g) {
     g = Math.abs(g);
     return g < 1 ? Math.round(g * 100) + 'cm' : g.toFixed(1) + 'm';
@@ -1014,8 +1038,11 @@
         const dtTap = J.relT - lastTap;
         const bonus = Math.round(clamp(1 - Math.max(0, dtTap - 0.35) / 1.0, 0, 1) * 300);
         big = dtTap <= 0.7;
-        pts = 1000 + bonus + sb;
+        // 上げる必要のない DF を上げたぶんは減点
+        const pen = p.extra.length * EXTRA_PEN;
+        pts = Math.max(100, 1000 + bonus + sb - pen);
         popup(t('res.offside'), '#ffe14d', 64);
+        if (pen) popup(t('res.extra', { c: p.extra.length, p: pen }), '#ff8a65', 26, 0.25);
         if (big) popup(t('res.just'), '#7dffb0', 30, 0.2);
         a.ar.mode = 'flag'; a.ar.t = 0;
         Sound.beep();
@@ -1063,6 +1090,7 @@
     const tapped = (k) => !!a[k].step;
     if (kind === 'offside') {
       out.push(t('why.offside', { n, d, g: fmtGap(J.gap) }));
+      if (p.extra.length) { out.push(t('why.extra', { need: needList(), c: p.extra.length, p: p.extra.length * EXTRA_PEN })); return out; }
       out.push(t(({ fk: 'why.fk', long: 'why.long', gkout: 'why.gkCounted', gkthrow: 'why.gkthrow' })[p.kind] || 'why.flag'));
       return out;
     }
@@ -1076,6 +1104,12 @@
     }
     if (kind !== 'goal') { out.push(t('why.cleared')); return out; }
     if (state.mark && !state.taps.length) { out.push(t('why.markUseless', { n })); return out; }
+    if (p.exploited) {
+      // 余計に上げた DF の裏を 7 番に突かれた(9 番はオフサイドポジションでも、関わっていないので反則ではない)
+      out.push(t('why.exploit', { d: who(p.gap.k), n, need: needList() }));
+      out.push(t('why.passive', { n: NUM[p.exploited] }));
+      return out;
+    }
     if (J.level) out.push(t('why.level'));
     else if (J.sl.k === 'gk') {
       const cover = p.laggers.find((k) => !tapped(k)) || p.laggers[0];
