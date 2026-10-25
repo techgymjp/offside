@@ -26,7 +26,8 @@
   const GK_V = 6.6, GK_REACT = 0.4;
   const STEP_V = 7.0, STEP_ACC = 16, STEP_PAST = 1.5; // ラインより STEP_PAST だけ前まで出る
   const VAR_T = 1.3, VAR_K = 0.22;
-  const READY_T = 2.3, READY_FADE = 0.5;   // 「◯プレー目」と場面の表示(最後の READY_FADE 秒で消える)     // パスの瞬間のスローモーション(実時間・倍率)
+  const READY_T = 2.3, READY_FADE = 0.5;
+  const HUD_K = 1.4;                       // スマホの左上の成績の拡大率   // 「◯プレー目」と場面の表示(最後の READY_FADE 秒で消える)     // パスの瞬間のスローモーション(実時間・倍率)
   const DT = 1 / 120;
   const DEFS = ['d1', 'd2', 'd3', 'd4'];                 // 左から(画面の上=奥から)1〜4 キー
   const HOME = ['d1', 'd2', 'd3', 'd4', 'm1', 'm2', 'gk'];
@@ -1213,10 +1214,10 @@
     state.guide = g;
     state.passCue = false;
     if (!p) return;
-    if ((state.phase === 'build' || state.phase === 'ready') && state.nav && !p.noOff) {
+    // ナビは答えではなく手がかり: 今のオフサイドライン(後ろから2人目の守備者)だけを引く。どの DF か・どうするかは自分で判断する
+    if ((state.phase === 'build' || state.phase === 'ready') && state.nav) {
       const sl = secondLast();
       g.lines.push({ y: sl.y, color: 0xff4040, opacity: 0.7 });
-      if (sl.k !== 'gk' || p.kind === 'gkout') g.rings.push({ x: a[sl.k].x, y: a[sl.k].y, color: 0xffe14d, pulse: true });
     }
     if (state.phase === 'build' && state.nav) {
       const kk = a[p.kicker];
@@ -1326,6 +1327,9 @@
   }
 
   function drawHUD() {
+    // スマホは画面が小さいので、左上の成績をまとめて大きくする
+    ctx.save();
+    if (isTouch) ctx.scale(HUD_K, HUD_K);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(12, 12, 290, 92);
     ctx.fillStyle = '#ffffff';
@@ -1348,6 +1352,7 @@
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(t('hud.me'), 320, 35, 116);
+    ctx.restore();
   }
 
   // DF の頭の上のバッジ(タップすると前に出る)。重ならないよう縦にずらす
@@ -1369,7 +1374,7 @@
       }
     }
     // 下の案内の帯に重ならないように
-    for (const q of list) { q.x = clamp(q.x, r + 4, W - r - 4); q.y = clamp(q.y, r + 4, H - 96 - r); }
+    for (const q of list) { q.x = clamp(q.x, r + 4, W - r - 4); q.y = clamp(q.y, r + 4, H - (isTouch ? 116 : 96) - r); }
     state.badges = list;
   }
 
@@ -1381,16 +1386,14 @@
     layoutBadges();
     const p = state.play, a = state.actors;
     const dim = state.phase === 'ready';
-    const blink = state.passCue && Math.floor(state.time * 10) % 2 === 0;
     ctx.save();
     for (const bg of state.badges) {
       const d = a[bg.k], up = !!d.step;
-      const hint = !up && blink && !p.noOff && p.laggers.includes(bg.k);
       ctx.globalAlpha = dim ? 0.45 : 0.95;
       // 頭への細い線
       ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(bg.x, bg.y + bg.r); ctx.lineTo(bg.hx, bg.hy - 2); ctx.stroke();
-      ctx.fillStyle = up ? 'rgba(255,225,77,0.95)' : hint ? 'rgba(255,140,60,0.92)' : 'rgba(150,10,30,0.82)';
+      ctx.fillStyle = up ? 'rgba(255,225,77,0.95)' : 'rgba(150,10,30,0.82)';
       ctx.beginPath(); ctx.arc(bg.x, bg.y, bg.r, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
       ctx.fillStyle = up ? '#222' : '#fff';
@@ -1411,10 +1414,9 @@
   function drawMarkButton() {
     if (!markShown()) return;
     const p = state.play, b = MARKBTN, on = !!state.mark;
-    const hint = !on && state.passCue && p.noOff && Math.floor(state.time * 10) % 2 === 0;
     ctx.save();
     ctx.globalAlpha = state.phase === 'ready' ? 0.4 : 0.9;
-    ctx.fillStyle = on ? 'rgba(127,227,255,0.92)' : hint ? 'rgba(255,140,60,0.85)' : 'rgba(0,0,0,0.45)';
+    ctx.fillStyle = on ? 'rgba(127,227,255,0.92)' : 'rgba(0,0,0,0.45)';
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2.5; ctx.stroke();
     const fk = b.r / 50;
@@ -1441,7 +1443,8 @@
     // プレーの邪魔にならないよう、上のボタンと奥の広告看板の間(客席のあたり)に出す
     const top = MUTE.y + MUTE.r + 6;
     const far = Scene3D.project(-HX - 6, state.view.y, 0.9);
-    const y0 = Math.max(top, Math.min(far.behind ? top : far.y - 58, isTouch ? 90 : 80));
+    const vh = isTouch ? 64 : 54, ft = isTouch ? 16 : 12, fm = isTouch ? 30 : 24; // スマホは大きく
+    const y0 = Math.max(top, Math.min(far.behind ? top : far.y - vh - 4, isTouch ? 90 : 80));
     let text, col;
     if (J.exempt) { text = t('call.' + p.kind) + ' → ' + t('var.exempt'); col = '#9fe8ff'; }
     else if (J.level) { text = t('var.level'); col = '#9fe8ff'; }
@@ -1451,32 +1454,33 @@
       // 後ろから2人目より前でも、自陣・ボールより後ろならオフサイドポジションではない
       text = t('var.exempt'); col = '#9fe8ff';
     }
-    ctx.font = '900 24px sans-serif';
+    ctx.font = `900 ${fm}px sans-serif`;
     const w = Math.min(W - 40, Math.max(ctx.measureText(text).width, 200) + 48);
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(W / 2 - w / 2, y0, w, 54);
-    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - w / 2, y0, w, 54);
+    ctx.fillRect(W / 2 - w / 2, y0, w, vh);
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - w / 2, y0, w, vh);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ddd';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('VAR · ' + t('var.title'), W / 2, y0 + 16);
+    ctx.font = `bold ${ft}px sans-serif`;
+    ctx.fillText('VAR · ' + t('var.title'), W / 2, y0 + ft + 4);
     ctx.fillStyle = col;
-    ctx.font = '900 24px sans-serif';
-    ctx.fillText(text, W / 2, y0 + 44, w - 20);
+    ctx.font = `900 ${fm}px sans-serif`;
+    ctx.fillText(text, W / 2, y0 + vh - 10, w - 20);
     // 線のラベル(奥のタッチラインのあたり)
     if (!J.exempt) {
       // 手前のタッチラインのあたりに、線の左右に分けて出す
       const lab = (y, label, c, right, row) => {
         const s = Scene3D.project(HX - 6, y, 0);
         if (s.behind) return;
-        ctx.font = 'bold 14px sans-serif';
+        const fs = isTouch ? 22 : 14, lh = fs + 8;
+        ctx.font = `bold ${fs}px sans-serif`;
         const tw = ctx.measureText(label).width + 14;
-        const x = clamp(right ? s.x + 6 : s.x - 6 - tw, 6, W - tw - 6), yy = clamp(s.y - 40 - row * 26, 90, H - 60);
+        const x = clamp(right ? s.x + 6 : s.x - 6 - tw, 6, W - tw - 6), yy = clamp(s.y - 40 - row * (lh + 4), 90, H - lh - 38);
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
-        ctx.fillRect(x, yy, tw, 22);
+        ctx.fillRect(x, yy, tw, lh);
         ctx.fillStyle = c;
         ctx.textAlign = 'left';
-        ctx.fillText(label, x + 7, yy + 16);
+        ctx.fillText(label, x + 7, yy + fs + 1);
       };
       const defLeft = J.sl.y <= J.recvY;
       lab(J.sl.y, t('lbl.def', { d: who(J.sl.k) }), '#ff8080', !defLeft, 0);
@@ -1558,25 +1562,26 @@
     const p = state.play;
     const lines = [t(m.key)];
     if (state.nav) {
-      const nk = p.noOff ? 'nav.' + p.noOff : p.kind === 'gkout' ? 'nav.gk' : p.kind === 'gkthrow' ? 'nav.gkthrow' : p.laggers.length > 1 ? 'nav.trap2' : 'nav.trap';
-      lines.push(t(nk));
+      lines.push(t('nav.check')); // どの場面でも同じチェックリスト
     }
     ctx.save();
+    // スマホは文字を大きく
+    const f0 = isTouch ? 26 : 18, f1 = isTouch ? 22 : 15, bh = isTouch ? 40 : 30;
     lines.forEach((text, i) => {
-      ctx.font = i ? 'bold 15px sans-serif' : 'bold 18px sans-serif';
+      ctx.font = `bold ${i ? f1 : f0}px sans-serif`;
       const w = Math.min(W - 40, ctx.measureText(text).width + 30);
-      const y = H - 18 - (lines.length - i) * 34;
+      const y = H - 18 - (lines.length - i) * (bh + 4);
       ctx.fillStyle = i ? 'rgba(120,60,0,0.78)' : 'rgba(0,0,0,0.58)';
-      ctx.fillRect(W / 2 - w / 2, y, w, 30);
+      ctx.fillRect(W / 2 - w / 2, y, w, bh);
       ctx.fillStyle = i ? '#ffe0b2' : '#fff';
       ctx.textAlign = 'center';
-      ctx.fillText(text, W / 2, y + 21, w - 16);
+      ctx.fillText(text, W / 2, y + bh / 2 + (i ? f1 : f0) * 0.36, w - 16);
     });
     if (state.passCue) {
       const kk = state.actors[p.kicker];
       const s = Scene3D.project(kk.x, kk.y, 2.4);
       if (!s.behind && Math.floor(state.time * 8) % 2 === 0) {
-        ctx.font = '900 20px sans-serif';
+        ctx.font = `900 ${isTouch ? 28 : 20}px sans-serif`;
         ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.75)';
         ctx.strokeText(t('nav.pass'), s.x, s.y - 12);
         ctx.fillStyle = '#ff9a3c';
