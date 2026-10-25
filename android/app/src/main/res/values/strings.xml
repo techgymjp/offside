@@ -4,6 +4,5 @@
     <string name="title_activity_main">オフサイドトラップ</string>
     <string name="package_name">jp.techgym.offside</string>
     <string name="custom_url_scheme">jp.techgym.offside</string>
-    <!-- AdMob のアプリ ID。オフサイドトラップの ID が届くまでは Google 公式のテスト用アプリ ID -->
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_app_id">ca-app-pub-6411535997477460~5364416358</string>
 </resources>

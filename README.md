@@ -133,7 +133,7 @@ GK が手で投げたボールの判定位置(2025/26 の改正)・罰則(間接
 ![動作確認用 APK のリリース画面の QR コード](docs/apk-qr.png)
 
 AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `admob_app_id`、本番の広告ユニット ID は `ads.js` の `UNITS.production` にあります。
-オフサイドトラップの AdMob の ID が届くまでは、アプリ ID は Google 公式のテスト用、本番の広告ユニット ID は空です(空の種類は Google Play 用の AAB では出さない)。
+本番の広告ユニット ID は、届いたバナーだけ入っています。インタースティシャルとリワードは空です(空の種類は Google Play 用の AAB では出さない)。
 動作確認用 APK はどれもテスト広告、Google Play 用の AAB は本番の広告です。
 
 手元で試すとき: `npm install` → `npm run android:sync` → `npm run android:open`(Android Studio が必要)。
