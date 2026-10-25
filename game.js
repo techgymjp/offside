@@ -1826,9 +1826,10 @@
     if (!show && !rulesEl.hidden) rulesEl.hidden = true;
   }
 
-  // タイトル画面の背景: 最初のプレーの並びを見せておく
+  // タイトル画面の背景: ランダムな場面の並びを見せておく
   function titleScene() {
     state.index = 0;
+    state.order = makeOrder((Date.now() ^ (Math.random() * 1e9)) >>> 0); // 背景の場面も毎回ちがう
     startPlay();
     state.phase = 'title';
     state.view = { x: 0, y: 12, fx: -1, fy: 0, back: 38, h: 21, pitch: -0.52, fov: 50, cut: true };
