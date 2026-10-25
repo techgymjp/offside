@@ -1,5 +1,5 @@
 'use strict';
-// オフサイド — ラインを上げろ!パスの瞬間に、相手を置き去りにせよ
+// オフサイドトラップ — ラインを上げろ!パスの瞬間に、相手を置き去りにせよ
 // 座標系: ピッチの中心が原点、x がタッチライン方向、y がゴール方向、z が高さ。単位はメートル。
 // 自分たち(赤)は y = +52.5 のゴールを守る守備側。相手(青)は +y に向かって攻めてくる。相手陣内 = y > 0 の側。
 // 1 プレーの流れ:
@@ -25,7 +25,8 @@
   const HOME_V = 7.6, HOME_ACC = 14, HOME_REACT = 0.32, TURN_T = 0.3; // 裏へのボールは振り返るぶん遅れる
   const GK_V = 6.6, GK_REACT = 0.4;
   const STEP_V = 7.0, STEP_ACC = 16, STEP_PAST = 1.5; // ラインより STEP_PAST だけ前まで出る
-  const VAR_T = 1.3, VAR_K = 0.22;     // パスの瞬間のスローモーション(実時間・倍率)
+  const VAR_T = 1.3, VAR_K = 0.22;
+  const READY_T = 2.3, READY_FADE = 0.5;   // 「◯プレー目」と場面の表示(最後の READY_FADE 秒で消える)     // パスの瞬間のスローモーション(実時間・倍率)
   const DT = 1 / 120;
   const DEFS = ['d1', 'd2', 'd3', 'd4'];                 // 左から(画面の上=奥から)1〜4 キー
   const HOME = ['d1', 'd2', 'd3', 'd4', 'm1', 'm2', 'gk'];
@@ -78,14 +79,17 @@
   const pressed = { start: false, next: false };
   const MUTE = { x: 596, y: 36, r: 20 };
   const NAVBTN = { x: 660, y: 36, w: 76, h: 30 };
+  // 「マーク」ボタン(オフサイドにならない場面で、狙われている選手に体を寄せる)
+  const MARKBTN = { x: 860, y: 450, r: 50 };
   const pointers = new Map();
-  let bot = null; // テスト用: (state) => 'd1' など、上げる DF のキーを返す関数
+  let bot = null; // テスト用: (state) => 'd1' など、上げる DF のキー(または 'mark')を返す関数
 
   window.addEventListener('keydown', (e) => {
     audio();
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (!keys.has(k)) {
       if (k >= '1' && k <= '4') tapDef(DEFS[+k - 1]);
+      if (k === ' ' || k === 'k') doMark();
       if (k === ' ' || k === 'Enter') { pressed.start = true; pressed.next = true; }
       if (k === 'p' || k === 'Escape') togglePause();
       if (k === 'm') Sound.setMuted(!Sound.muted);
@@ -133,6 +137,7 @@
     if (state.paused) return; // ポーズ中は「再開」ボタンで戻る
     if (state.phase === 'result') { pressed.next = true; return; }
     if (state.phase === 'var' && (state.badges || []).length) { const k = hitBadge(p); if (k) tapDef(k); return; }
+    if (markShown() && Math.hypot(p.x - MARKBTN.x, p.y - MARKBTN.y) <= MARKBTN.r + (isTouch ? 16 : 6)) { doMark(); return; }
     const k = hitBadge(p);
     if (k) tapDef(k);
   });
@@ -436,7 +441,7 @@
     state.released = false;
     state.taps = [];
     state.result = null;
-    state.shot = false; state.clearedBy = null; state.goalHow = null;
+    state.shot = false; state.clearedBy = null; state.goalHow = null; state.mark = null;
     const a = {};
     for (const [k, q] of Object.entries(p.pos)) {
       const home = HOME.includes(k);
@@ -583,12 +588,22 @@
     Sound.step();
   }
 
+  // ---------- 「マーク」: 狙われている選手に体を寄せる ----------
+  // オフサイドにならない場面では、これでマークの DF が競り合いに勝つ。押さないとボールばかり見てマークが甘くなる。
+  // オフサイドを取る場面では、裏へ走る受け手には追いつけない(ラインを上げるのが正解)
+  const markShown = () => state.phase === 'build' || state.phase === 'ready';
+  function doMark() {
+    if (state.phase !== 'build' || state.paused || state.mark) return;
+    state.mark = { t: state.buildT };
+    Sound.bump();
+  }
+
   // ---------- パスまで(ビルドアップ) ----------
   function updateBuild(dt) {
     const p = state.play, a = state.actors, b = state.ball;
     const kk = a[p.kicker];
     state.buildT += dt;
-    if (bot) { const k = bot(state); if (k) tapDef(k); }
+    if (bot) { const k = bot(state); if (k === 'mark') doMark(); else if (k) tapDef(k); }
     state.lHist.push({ t: state.buildT, y: secondLast().y });
     if (state.lHist.length > 400) state.lHist.shift();
 
@@ -652,7 +667,13 @@
       if (d.step) { doStep(d, dt); continue; }
       if (c.follow || d.follow !== undefined && d.follow) {
         const f = d.follow || c.follow, q = a[f.k];
-        moveTo(d, q.x + f.x, q.y + f.y, f.v || 6.5, dt, 14); integrate(d, dt, false);
+        let tx = q.x + f.x, ty = q.y + f.y;
+        if (loose(k)) {
+          // ボールばかり見てマークが甘くなり、受け手から横へ離れる(ボールの通り道からも外れる)
+          const v = norm(b.x - q.x, b.y - q.y), sg = q.x > 0 ? -1 : 1;
+          tx = q.x - v.y * sg * 2.2; ty = q.y + v.x * sg * 2.2 + 0.4;
+        }
+        moveTo(d, tx, ty, f.v || 6.5, dt, 14); integrate(d, dt, false);
       } else if (c.press) {
         moveTo(d, kk.x + c.press.x, kk.y + c.press.y, 6.5, dt, 12); integrate(d, dt, false); d.crouch = true;
       } else {
@@ -663,6 +684,12 @@
       faceTo(d, b.x, b.y);
     }
     if (state.phase === 'build') state.actors.R.lastHoldY = state.actors.R.y;
+  }
+
+  // オフサイドにならない場面で「マーク」を押していない、マーク役の DF
+  function loose(k) {
+    const p = state.play;
+    return !!p.noOff && p.laggers.includes(k) && !state.mark;
   }
 
   // 受け手: 少し前のラインを見て、そのすぐ手前(オンサイド)に立つ。ラインが上がれば下がる
@@ -803,11 +830,11 @@
         stopAnim(d, dt, 6); faceTo(d, b.x, b.y);
         continue;
       }
-      if (d.react == null) d.react = HOME_REACT + (state.pass.y > d.y + 2 ? TURN_T : 0);
+      if (d.react == null) d.react = HOME_REACT + (state.pass.y > d.y + 2 ? TURN_T : 0) + (loose(k) ? Math.max(0.8, state.pass.T - 0.4) : 0); // マークが甘いと、ボールが落ちてくる直前まで気づかない
       // スローイン・ゴールキックの競り合いはマークの DF だけ。ほかはラインを保ってこぼれ球に備える
       const contest = !a[p.receiver].cfg.stay || (d.cfg.follow && d.cfg.follow.k === p.receiver);
       if (rt < d.react || !contest) { stopAnim(d, dt, 6); faceTo(d, b.x, b.y); continue; }
-      const guard = p.noOff && p.laggers.includes(k); // カバーの DF はジャンプして頭で競る
+      const guard = p.noOff && p.laggers.includes(k) && !loose(k); // 体を寄せた DF はジャンプして頭で競る
       const s = interceptPoint(d, path, HOME_V, guard ? 2.6 : 1.9);
       moveTo(d, s.x, s.y, HOME_V, dt, HOME_ACC, 8); integrate(d, dt);
     }
@@ -840,7 +867,7 @@
       }
       if (d.react == null || rt < d.react || d.step || J.offence) continue;
       // オフサイドにならない場面でカバーに残った DF は、体を入れて競り合いに勝つ
-      if (p.noOff && p.laggers.includes(k) && Math.hypot(b.x - d.x, b.y - d.y) < 1.6 && b.z < 2.6) { best = k; bd = -1; continue; }
+      if (p.noOff && p.laggers.includes(k) && !loose(k) && Math.hypot(b.x - d.x, b.y - d.y) < 1.6 && b.z < 2.6) { best = k; bd = -1; continue; }
       cand(k, b.z < 0.6 ? 0.95 : 0.75, 2.0);
     }
     // オフサイドポジションの受け手がボールに向かってプレーしようとした(関与した)ら旗
@@ -986,9 +1013,9 @@
         const r = a[p.receiver]; r.vx *= 0.2; r.vy *= 0.2; setMode(r, 'sad');
         const b = state.ball; b.vx *= 0.15; b.vy *= 0.15; b.vz = 0; b.z = R;
       } else {
-        pts = (p.noOff ? 900 : 600) + sb;
+        pts = (p.noOff && state.mark && !state.taps.length ? 900 : 600) + sb;
         popup(t(kind === 'catch' ? 'res.catch' : 'res.clear'), '#ffe14d', 56);
-        if (p.noOff && !state.taps.length) { popup(t('res.read'), '#7dffb0', 30, 0.2); big = true; }
+        if (p.noOff && state.mark && !state.taps.length) { popup(t('res.read'), '#7dffb0', 30, 0.2); big = true; }
         Sound.whistle(0.3);
       }
       state.score += pts;
@@ -1027,11 +1054,13 @@
     if (p.noOff) {
       out.push(t('why.' + p.noOff, { n }));
       if (kind === 'goal' && state.taps.length) out.push(t('why.markNg'));
-      else if (kind !== 'goal' && !state.taps.length) out.push(t('why.markOk'));
-      else if (kind !== 'goal') out.push(t('why.cleared'));
+      else if (kind === 'goal') out.push(t('why.loose'));
+      else if (state.mark && !state.taps.length) out.push(t('why.markOk'));
+      else out.push(t('why.cleared'));
       return out;
     }
     if (kind !== 'goal') { out.push(t('why.cleared')); return out; }
+    if (state.mark && !state.taps.length) { out.push(t('why.markUseless', { n })); return out; }
     if (J.level) out.push(t('why.level'));
     else if (J.sl.k === 'gk') {
       const cover = p.laggers.find((k) => !tapped(k)) || p.laggers[0];
@@ -1135,7 +1164,7 @@
 
     if (state.phase === 'ready') {
       updateBuildIdle(dt);
-      if (state.phaseT >= 1.8) {
+      if (state.phaseT >= READY_T) { // 場面の表示が消えきってから始める
         state.phase = 'build';
         state.phaseT = 0;
         state.msg = { key: isTouch ? 'msg.build' : 'msg.build.key', t: 0 };
@@ -1198,6 +1227,7 @@
         g.rings.push({ x: kk.x, y: kk.y, color: 0xff9a3c, pulse: true, r: 1.3 });
       }
     }
+    if (state.mark && p.noOff && (state.phase === 'build' || state.phase === 'var')) for (const k of p.laggers) if (!a[k].step) g.rings.push({ x: a[k].x, y: a[k].y, color: 0x7fe3ff, r: 0.9, opacity: 0.8 });
     for (const k of DEFS) if (a[k].step && (state.phase === 'build' || state.phase === 'var')) g.rings.push({ x: a[k].x, y: a[k].y, color: 0xffe14d, r: 0.8, opacity: 0.6 });
     // パスの瞬間とそのあと: 判定に使った 2 本の線(赤 = 後ろから2人目の守備者、青 = 受け手)
     if (J && !J.exempt && (state.phase === 'var' || state.phase === 'run' || state.phase === 'attack' || state.phase === 'result')) {
@@ -1215,8 +1245,11 @@
       const lo = Math.min(kk.y, p.lineY), hi = Math.max(kk.y, p.lineY + 6);
       const span = hi - lo;
       cy = (lo + hi) / 2;
-      back += Math.max(0, span - 30) * 0.7;
-      h += Math.max(0, span - 30) * 0.28;
+      // 離れた場面は少し引いて、それ以上は画角を広げる(引きすぎるとカメラがスタンドの屋根に入って画面が暗くなる)
+      const extra = Math.max(0, span - 30);
+      back += Math.min(extra * 0.7, 10);
+      h += Math.min(extra * 0.28, 4);
+      fov = clamp(50 + Math.max(0, extra - 14) * 0.45, 50, 66);
     } else if (state.phase === 'var') {
       // 判定の瞬間は、副審のようにラインの真横へ
       cy = (J.sl.y + J.recvY) / 2;
@@ -1366,9 +1399,37 @@
       ctx.font = `900 ${Math.round(24 * fk)}px sans-serif`;
       ctx.fillText(NUM[bg.k], bg.x, bg.y + 3 * fk);
       ctx.font = `bold ${Math.round(10 * fk)}px sans-serif`;
-      const sub = up ? t('badge.going') : (isTouch ? '▲' + t('badge.up') : `[${DEFS.indexOf(bg.k) + 1}] ▲`);
+      const marking = !up && state.mark && p.noOff && p.laggers.includes(bg.k);
+      const sub = up ? t('badge.going') : marking ? t('badge.mark') : (isTouch ? '▲' + t('badge.up') : `[${DEFS.indexOf(bg.k) + 1}] ▲`);
+      if (marking) ctx.fillStyle = '#7fe3ff';
       ctx.fillText(sub, bg.x, bg.y + 17 * fk, bg.r * 1.8);
     }
+    ctx.restore();
+  }
+
+  // 「マーク」ボタン(コーナーキックのボタンと同じ作り)
+  function drawMarkButton() {
+    if (!markShown()) return;
+    const p = state.play, b = MARKBTN, on = !!state.mark;
+    const hint = !on && state.passCue && p.noOff && Math.floor(state.time * 10) % 2 === 0;
+    ctx.save();
+    ctx.globalAlpha = state.phase === 'ready' ? 0.4 : 0.9;
+    ctx.fillStyle = on ? 'rgba(127,227,255,0.92)' : hint ? 'rgba(255,140,60,0.85)' : 'rgba(0,0,0,0.45)';
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2.5; ctx.stroke();
+    const fk = b.r / 50;
+    // 盾のアイコン
+    ctx.save();
+    ctx.translate(b.x, b.y - 18 * fk); ctx.scale(fk, fk);
+    ctx.fillStyle = on ? '#063040' : '#7fe3ff';
+    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(11, -7); ctx.lineTo(9, 5); ctx.lineTo(0, 12); ctx.lineTo(-9, 5); ctx.lineTo(-11, -7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = on ? '#063040' : '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = `900 ${Math.round(19 * fk)}px sans-serif`;
+    ctx.fillText(t('btn.mark'), b.x, b.y + 12 * fk, b.r * 1.7);
+    ctx.font = `bold ${Math.round(10 * fk)}px sans-serif`;
+    ctx.fillText(isTouch ? t('btn.markSub') : t('btn.markSub') + ' [Space]', b.x, b.y + 28 * fk, b.r * 1.8);
     ctx.restore();
   }
 
@@ -1527,8 +1588,10 @@
     const p = state.play;
     if (!p || state.paused) return;
     let a = 0, k = 1;
-    if (state.phase === 'ready') { a = Math.min(1, state.phaseT / 0.2); k = 1 + Math.max(0, 0.2 - state.phaseT) * 2.5; }
-    else if (state.phase === 'build' && state.phaseT < 0.8) { a = 1 - state.phaseT / 0.8; k = 1 + state.phaseT * 0.5; }
+    if (state.phase === 'ready') {
+      a = Math.min(1, state.phaseT / 0.2, (READY_T - state.phaseT) / READY_FADE);
+      k = 1 + Math.max(0, 0.2 - state.phaseT) * 2.5 + Math.max(0, state.phaseT - (READY_T - READY_FADE)) * 0.4;
+    }
     if (a <= 0) return;
     const text = t('call.' + p.kind);
     ctx.save();
@@ -1662,7 +1725,7 @@
     if (navigator.share) {
       try {
         const blob = await makeShareImage();
-        const file = blob && new File([blob], 'offside-result.png', { type: 'image/png' });
+        const file = blob && new File([blob], 'offside-trap-result.png', { type: 'image/png' });
         const data = { title: t('share.title'), text: withUrl(text) };
         if (file && navigator.canShare && navigator.canShare({ files: [file] })) data.files = [file];
         await navigator.share(data);
@@ -1706,6 +1769,7 @@
     ctx.clearRect(0, 0, W, H);
     if (state.phase !== 'title') {
       drawBadges();
+      drawMarkButton();
       drawMinimap();
       drawHUD();
       drawMessage();
@@ -1713,8 +1777,11 @@
       drawPopups();
       drawExplain();
       if (state.phase === 'ready' && !state.paused) {
+        ctx.save();
+        ctx.globalAlpha = clamp((READY_T - state.phaseT) / READY_FADE, 0, 1);
         centerText(t('ready.play', { n: state.index + 1 }), 215, 34, '#ffffff', '900');
         centerText(t('ready.sub'), 405, 22, '#ffcc80');
+        ctx.restore();
       }
       drawCall();
       if (state.paused && !isPortrait()) {
@@ -1847,9 +1914,11 @@
       Object.assign(NAVBTN, { y: 42, w: 104, h: 42 });
       MUTE.x = W / 2 + 40;
       NAVBTN.x = MUTE.x + 92;
+      Object.assign(MARKBTN, { x: W - 120, y: H - 215, r: 64 });
     } else {
       MUTE.x = W / 2 + 90;
       NAVBTN.x = MUTE.x + 64;
+      Object.assign(MARKBTN, { x: W - 90, y: H - 190, r: 50 });
     }
     overlayScale = (r.height / H) * dpr;
     canvas.width = Math.round(W * overlayScale);
@@ -1862,7 +1931,7 @@
     hold: false, forceKind: null,
     state, newGame, update, DT, TOTAL, KINDS, makeOrder,
     setBot(fn) { bot = fn; },
-    tap: tapDef, secondLast, judge,
+    tap: tapDef, mark: doMark, secondLast, judge,
     startAt(i, seed) { newGame(seed); state.index = i; startPlay(); },
   };
 

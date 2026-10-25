@@ -1,4 +1,4 @@
-# オフサイド (Offside)
+# オフサイドトラップ (Offside Trap)
 
 サッカーの **オフサイド** をテーマにしたブラウザゲームです。
 あなたは赤チームの守備ライン。ドリブルで攻めてくる相手がパスを出す瞬間に、ラインから遅れている DF をタップしてラインを上げ、
@@ -74,6 +74,7 @@ GK が手で投げたボールの判定位置(2025/26 の改正)・罰則(間接
 | 操作 | タッチ / マウス | キーボード |
 | --- | --- | --- |
 | DF を上げる | DF の頭の上の番号のバッジ(または選手)をタップ | 1〜4(画面の奥の DF から順に) |
+| マーク(体を寄せる) | 右の「マーク」ボタン | Space(または K) |
 | 次のプレーへ(結果画面) | タップ | Space |
 | 一時停止 | — | P / Esc |
 | 音のオン/オフ | 画面上部のスピーカーボタン | M |
@@ -120,7 +121,7 @@ GK が手で投げたボールの判定位置(2025/26 の改正)・罰則(間接
 
 ## English
 
-**Offside** — a 3D football browser game about the offside trap and the offside law.
+**Offside Trap** — a 3D football browser game about the offside trap and the offside law.
 
 - You control the red back line, seen from a TV-style camera high in the main stand. Tap the defender who is lagging behind (or press 1–4) right as the pass is played — he steps up and springs the trap.
 - Too early and the striker drops back onside; after the pass is too late. A VAR slow-motion shows the second-last defender's line, the receiver's line and the gap, and the assistant referee flags once the offside player gets involved.

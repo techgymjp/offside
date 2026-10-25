@@ -1,6 +1,6 @@
 {
-  "name": "オフサイド",
-  "short_name": "オフサイド",
+  "name": "オフサイドトラップ",
+  "short_name": "オフサイドトラップ",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "landscape",

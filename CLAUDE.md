@@ -9,7 +9,7 @@
 
 ## このリポジトリ
 
-- ビルド不要のブラウザゲーム。`index.html` を開けば動く。質感・構成は techgymjp/corner-kick と同じ
+- ゲーム名は「オフサイドトラップ」(英語: Offside Trap)。リポジトリ名は offside。ビルド不要のブラウザゲーム。`index.html` を開けば動く。質感・構成は techgymjp/corner-kick と同じ
 - テスト用フックは `window.Offside`(README の「ファイル」を参照)
 - JS・CSS を変えたら、`index.html` の読み込みの `?v=番号` を 1 つ上げる(ブラウザに古いファイルが残って、変更が反映されないのを防ぐ)
 
