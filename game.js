@@ -37,6 +37,9 @@
   const KINDS = ['through', 'long', 'throw', 'through2', 'two', 'cutback', 'gkout', 'ownhalf', 'goalkick', 'fk', 'corner', 'offfield', 'gkthrow'];
   const AERIAL = { goalkick: 3.1, cross: 1.5, chip: 0 }; // 受け手の頭へ送る浮き球(マークの DF と競り合う)。0 は距離から決める
   const t = (k, v) => I18N.t(k, v);
+  // Android アプリ(Capacitor)で動いているか。Web 版では Capacitor がないので何もしない
+  const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const plugin = (name) => (NATIVE && window.Capacitor.Plugins ? window.Capacitor.Plugins[name] : null);
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -176,7 +179,7 @@
     state.order = makeOrder(state.seed);
     Object.assign(state, {
       phase: 'ready', paused: false, index: 0, ok: 0, traps: 0, score: 0,
-      streak: 0, bestStreak: 0, phaseT: 0, overT: 0, popups: [], lastResult: null, newRecord: false, navUsed: false,
+      streak: 0, bestStreak: 0, phaseT: 0, overT: 0, popups: [], lastResult: null, newRecord: false, navUsed: false, redoUsed: 0,
     });
     startPlay();
   }
@@ -430,7 +433,10 @@
   }
 
   function startPlay() {
+    // 1 プレーごとの乱数はゲームの種から作る(リワード広告のやり直しで同じプレーを再現するため)
     rng = mulberry32((state.seed || 1) + state.index * 7919);
+    // やり直し(リワード広告)のときに戻す成績
+    state.playStart = { ok: state.ok, traps: state.traps, score: state.score, streak: state.streak, bestStreak: state.bestStreak };
     const p = genPlay(state.index);
     state.play = p;
     state.phase = 'ready';
@@ -1036,6 +1042,7 @@
       setTimeout(() => Sound.whistle(0.3), 300);
     }
     state.lastResult = { ok, kind, lines };
+    if (!ok) offerRedo();
     state.msg = null;
     state.phase = 'result';
     state.phaseT = 0;
@@ -1133,7 +1140,7 @@
 
   function togglePause() {
     if (state.phase === 'title' || state.phase === 'over') return;
-    state.paused = !state.paused;
+    if (state.paused) resumeFromPause(); else state.paused = true;
   }
 
   // ---------- 更新 ----------
@@ -1146,13 +1153,14 @@
     }
     if (state.phase === 'over') {
       state.overT += dt;
-      if (pressed.start && state.overT > 1.0) { pressed.start = false; newGame(); }
+      if (pressed.start && state.overT > 1.0) { pressed.start = false; retry(); }
       pressed.start = false;
       return;
     }
     pressed.start = false;
     if (isPortrait()) { if (!state.paused) state.paused = true; return; }
     if (state.paused) { pressed.next = false; return; }
+    updateRedo(dt);
     if (state.nav && state.phase === 'build') state.navUsed = true;
 
     // パスの瞬間はスローモーション(判定のラインを見せる)
@@ -1192,7 +1200,8 @@
 
     if (state.phase === 'result') {
       const minT = 1.2, maxT = state.lastResult.ok ? 5.5 : 6;
-      if ((pressed.next && state.phaseT >= minT) || state.phaseT >= maxT || (bot && state.phaseT >= 2)) {
+      const waitRedo = redo.active || redo.pending > 0; // 「広告を見てやり直す」を出している間は進めない
+      if (!waitRedo && ((pressed.next && state.phaseT >= minT) || state.phaseT >= maxT || (bot && state.phaseT >= 2))) {
         state.index++;
         if (state.index >= TOTAL) gameOver();
         else startPlay();
@@ -1492,11 +1501,9 @@
     const J = state.judge, p = state.play;
     if (!J || !(state.phase === 'var' || state.phase === 'run' || state.phase === 'attack' || (state.phase === 'result' && state.phaseT < 1.2))) return;
     ctx.save();
-    // プレーの邪魔にならないよう、上のボタンと奥の広告看板の間(客席のあたり)に出す
-    const top = MUTE.y + MUTE.r + 6;
-    const far = Scene3D.project(-HX - 6, state.view.y, 0.9);
+    // プレーの邪魔にならないよう、画面の下に出す(線のラベルはその上)
     const vh = isTouch ? 64 : 54, ft = isTouch ? 16 : 12, fm = isTouch ? 30 : 24; // スマホは大きく
-    const y0 = Math.max(top, Math.min(far.behind ? top : far.y - vh - 4, isTouch ? 90 : 80));
+    const y0 = H - vh - 14;
     let text, col;
     if (J.exempt) { text = t('call.' + p.kind) + ' → ' + t('var.exempt'); col = '#9fe8ff'; }
     else if (J.level) { text = t('var.level'); col = '#9fe8ff'; }
@@ -1527,7 +1534,7 @@
         const fs = isTouch ? 22 : 14, lh = fs + 8;
         ctx.font = `bold ${fs}px sans-serif`;
         const tw = ctx.measureText(label).width + 14;
-        const x = clamp(right ? s.x + 6 : s.x - 6 - tw, 6, W - tw - 6), yy = clamp(s.y - 40 - row * (lh + 4), 90, H - lh - 38);
+        const x = clamp(right ? s.x + 6 : s.x - 6 - tw, 6, W - tw - 6), yy = clamp(s.y - 40 - row * (lh + 4), 90, y0 - 10 - lh - row * (lh + 4));
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
         ctx.fillRect(x, yy, tw, lh);
         ctx.fillStyle = c;
@@ -1723,11 +1730,12 @@
 
   // ---------- シェア(結果画面) ----------
   // 対応端末では成績画像つきで共有シートを開き、だめなら X・LINE・コピーで共有する
-  // 紹介記事ができるまでは、公開している場所(GitHub Pages など)のこのページの URL をシェアする
-  const SHARE_URL = /^https?:$/.test(location.protocol) ? location.origin + location.pathname : '';
+  // 紹介記事ができるまでは、公開している場所(GitHub Pages など)のこのページの URL をシェアする。
+  // アプリの中のページは https://localhost なので、アプリでは URL を付けない
+  const SHARE_URL = !NATIVE && /^https?:$/.test(location.protocol) ? location.origin + location.pathname : '';
   const shareEl = document.getElementById('share');
   const $id = (id) => document.getElementById(id);
-  const navLabel = () => t(state.navUsed ? 'nav.on' : 'nav.off');
+  const navLabel = () => t(state.navUsed ? 'nav.on' : 'nav.off') + (state.redoUsed ? t(state.redoUsed === 1 ? 'nav.redo1' : 'nav.redo', { n: state.redoUsed }) : '');
   const withUrl = (text) => (SHARE_URL ? text + '\n' + SHARE_URL : text);
 
   function shareText() {
@@ -1742,7 +1750,7 @@
     const text = shareText();
     $id('shareX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + (SHARE_URL ? '&url=' + encodeURIComponent(SHARE_URL) : '');
     $id('shareLine').href = 'https://line.me/R/share?text=' + encodeURIComponent(withUrl(text));
-    $id('shareMsg').textContent = t(navigator.share ? 'share.msg.image' : 'share.msg.links');
+    $id('shareMsg').textContent = t(NATIVE ? 'share.msg.native' : navigator.share ? 'share.msg.image' : 'share.msg.links');
     $id('retryBtn').textContent = t('over.retryBtn') + (isTouch ? '' : ' (SPACE)');
   }
 
@@ -1782,6 +1790,12 @@
 
   async function shareResult() {
     const text = shareText();
+    // アプリでは Android の共有メニューを出す
+    const nativeShare = plugin('Share');
+    if (nativeShare) {
+      try { await nativeShare.share({ title: t('share.title'), text: withUrl(text), dialogTitle: t('share.dialog') }); } catch (e) { /* キャンセル */ }
+      return;
+    }
     if (navigator.share) {
       try {
         const blob = await makeShareImage();
@@ -1855,6 +1869,7 @@
     updateShareVisibility();
     updateLangVisibility();
     updatePauseMenu();
+    updateBanner();
     drawMute();
     drawNavButton();
   }
@@ -1905,40 +1920,135 @@
     ctx.restore();
   }
 
-  // 裏に回ったら一時停止して音を止める
+  // 裏に回ったら一時停止して音を止める(広告の表示中は広告側が音を止めている)
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (state.phase !== 'title' && state.phase !== 'over') state.paused = true;
       Sound.suspend();
-    } else {
+    } else if (!Ads.showing) {
       Sound.resume();
     }
   });
 
-  function goTitle() {
-    Object.assign(state, { phase: 'title', paused: false, popups: [], msg: null });
-    titleScene();
+  // ---------- 全画面広告(Android アプリのみ) ----------
+  // 「もう一度」(次のゲームへ)・「タイトルへ」・ポーズ画面からの「再開」のたびに毎回出す
+  let adBusy = false;
+  async function withInterstitial(next) {
+    if (adBusy) return;
+    if (Ads.available) {
+      adBusy = true;
+      pauseEl.hidden = true;
+      await Ads.showInterstitial(3000);
+      adBusy = false;
+    }
+    next();
   }
+  function retry() { withInterstitial(() => { closeRedo(); newGame(); }); }
+  function goTitle() {
+    withInterstitial(() => {
+      closeRedo();
+      Object.assign(state, { phase: 'title', paused: false, popups: [], msg: null });
+      titleScene();
+    });
+  }
+  function resumeFromPause() { withInterstitial(() => { if (state.paused) state.paused = false; }); }
 
   // 結果画面の「もう一度」「タイトルへ」ボタン
-  $id('retryBtn').addEventListener('click', () => { audio(); if (state.phase === 'over') newGame(); });
+  $id('retryBtn').addEventListener('click', () => { audio(); if (state.phase === 'over') retry(); });
   $id('titleBtn').addEventListener('click', () => { audio(); if (state.phase === 'over') goTitle(); });
 
   // ポーズ画面のボタン(再開 / タイトルへ)
   const pauseEl = $id('pauseMenu');
   for (const ev of ['pointerdown', 'pointerup']) pauseEl.addEventListener(ev, (e) => e.stopPropagation());
-  $id('pauseResume').addEventListener('click', () => { audio(); state.paused = false; });
+  $id('pauseResume').addEventListener('click', () => { audio(); if (state.paused) resumeFromPause(); });
   $id('pauseTitle').addEventListener('click', () => { audio(); if (state.paused) goTitle(); });
   function updatePauseMenu() {
-    const show = state.paused && !isPortrait() && state.phase !== 'title' && state.phase !== 'over';
+    const show = state.paused && !adBusy && !isPortrait() && state.phase !== 'title' && state.phase !== 'over';
     if (show === pauseEl.hidden) pauseEl.hidden = !show;
   }
 
-  // タイトル画面の下にプライバシーポリシーと「オフサイドのルール」
+  // Android の戻るボタン: プレイ中はポーズ(ポーズ中なら再開)、タイトル・結果画面ではアプリを閉じる
+  if (plugin('App')) {
+    plugin('App').addListener('backButton', () => {
+      if (!rulesEl.hidden) rulesEl.hidden = true;
+      else if (state.phase === 'title' || state.phase === 'over') plugin('App').exitApp();
+      else if (state.paused) resumeFromPause();
+      else state.paused = true;
+    });
+  }
+
+  // ---------- リワード広告のチート: 失点したプレーをやり直す(アプリのみ・1 ゲーム 5 回まで) ----------
+  // 失点したら「広告を見てこのプレーをやり直す」を出す。見終わると、そのプレーの成績を取り消して同じプレー(同じ配置)をもう一度。
+  // 失点の様子と解説を見届けられるよう、少し待ってから出す
+  const REDO_DELAY = 2.6;
+  const REDO_WAIT = 6;
+  const REDO_MAX = 5;
+  const redo = { active: false, busy: false, t: 0, pending: 0 };
+  const redoEl = $id('redo');
+  for (const ev of ['pointerdown', 'pointerup']) redoEl.addEventListener(ev, (e) => e.stopPropagation());
+  function offerRedo() {
+    if (!Ads.canReward || state.redoUsed >= REDO_MAX) return;
+    redo.pending = REDO_DELAY;
+  }
+  function showRedo() {
+    Object.assign(redo, { active: true, busy: false, t: REDO_WAIT, pending: 0 });
+    $id('redoWatch').disabled = false;
+    $id('redoWatch').textContent = t('redo.watch');
+    $id('redoNote').textContent = t('redo.note', { n: REDO_MAX - state.redoUsed, max: REDO_MAX });
+    redoEl.hidden = false;
+  }
+  function closeRedo() {
+    redo.active = false;
+    redo.pending = 0;
+    redoEl.hidden = true;
+  }
+  function updateRedo(dt) {
+    if (redo.pending > 0) {
+      redo.pending -= dt;
+      if (redo.pending <= 0) showRedo();
+      return;
+    }
+    if (!redo.active || redo.busy) return;
+    redo.t -= dt;
+    $id('redoNext').textContent = t('redo.next', { s: Math.max(0, Math.ceil(redo.t)) });
+    if (redo.t <= 0) closeRedo();
+  }
+  $id('redoNext').addEventListener('click', closeRedo);
+  $id('redoWatch').addEventListener('click', async () => {
+    if (!redo.active || redo.busy) return;
+    redo.busy = true;
+    $id('redoWatch').disabled = true;
+    $id('redoWatch').textContent = t('redo.loading');
+    const result = await Ads.showRewarded();
+    if (!redo.active) return;
+    if (result === 'unavailable') {
+      $id('redoNote').textContent = t('redo.fail');
+      setTimeout(closeRedo, 2000);
+      return;
+    }
+    closeRedo();
+    if (result !== 'rewarded') return;
+    // 失点したプレーの成績を取り消して、同じプレーをもう一度
+    Object.assign(state, state.playStart);
+    state.redoUsed++;
+    state.popups = [];
+    startPlay();
+  });
+
+  // ---------- バナー広告: タイトル画面・ポーズ画面・結果画面だけ(プレイ中は操作ボタンと重なるので出さない) ----------
+  function updateBanner() {
+    const paused = state.paused && state.phase !== 'title' && state.phase !== 'over';
+    Ads.setBanner((state.phase === 'title' || state.phase === 'over' || paused) && !isPortrait());
+  }
+
+  // タイトル画面の下に、バージョン(アプリ版)・プライバシーポリシー・広告の設定(EU など)と「オフサイドのルール」
   const legalEl = $id('legal');
   const rulesBtn = $id('rulesBtn'), rulesEl = $id('rules');
   for (const el of [legalEl, rulesBtn, rulesEl]) for (const ev of ['pointerdown', 'pointerup', 'keydown']) el.addEventListener(ev, (e) => e.stopPropagation());
   rulesBtn.addEventListener('click', () => { audio(); rulesEl.hidden = false; });
+  if (window.APP_VERSION && window.APP_VERSION !== 'dev') $id('buildInfo').textContent = window.APP_VERSION;
+  Ads.initDone.then(() => { if (Ads.privacyOptionsRequired) $id('adPrivacy').hidden = false; });
+  $id('adPrivacyLink').addEventListener('click', (e) => { e.preventDefault(); Ads.showPrivacyOptions(); });
   $id('rulesClose').addEventListener('click', () => { rulesEl.hidden = true; });
 
   // タイトル画面の言語切り替え

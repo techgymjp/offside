@@ -147,7 +147,7 @@ html, body {
   transform: translateY(2px);
 }
 
-/* タイトル画面の下: プライバシーポリシー */
+/* タイトル画面の下: バージョン・プライバシーポリシー・広告の設定 */
 #legal {
   position: absolute;
   right: 12px;
@@ -161,6 +161,11 @@ html, body {
 #legal[hidden],
 #legal [hidden] {
   display: none;
+}
+
+#buildInfo {
+  margin-right: 10px;
+  opacity: 0.8;
 }
 
 #legal a {
@@ -328,4 +333,57 @@ html, body {
   cursor: pointer;
   background: linear-gradient(#ffe36b, #ffb300);
   color: #1b1200;
+}
+
+/* 失敗したときの「広告を見てこのプレーをやり直す」(アプリのみ) */
+#redo {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  width: min(520px, 76%);
+  z-index: 3;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.82);
+  font-family: sans-serif;
+  color: #e6eef8;
+  text-align: center;
+}
+
+#redo[hidden] {
+  display: none;
+}
+
+#redo p {
+  margin: 0 0 8px;
+  font-size: clamp(11px, 2.2vh, 14px);
+}
+
+#redo .row {
+  display: flex;
+  gap: 8px;
+}
+
+#redo .sbtn {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font: inherit;
+  font-weight: 800;
+  font-size: clamp(12px, 2.6vh, 16px);
+  cursor: pointer;
+  background: #dfe7f7;
+  color: #1b2440;
+}
+
+#redo .sbtn.main {
+  flex: 2;
+  background: linear-gradient(#7dffb0, #1fbf63);
+  color: #04210f;
+}
+
+#redo .sbtn:disabled {
+  opacity: 0.6;
 }

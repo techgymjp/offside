@@ -26,3 +26,12 @@
 ## English summary
 
 This game supports Japanese and English (auto-selected from the device language, switchable on the title screen). Every user-facing string must be added to both `ja` and `en` in `i18n.js` and shown via `t('key')`; never hard-code text. Check the English layout for overflow, and keep the README's English section up to date.
+
+## Android アプリ
+
+- 構成は techgymjp/jet-fighter の `docs/ANDROID_PORTING.md` と techgymjp/corner-kick と同じ(Capacitor 8)。パッケージ名は `jp.techgym.offside`
+- ビルドは GitHub Actions(`.github/workflows/android.yml`)。クラウドの Claude Code では Android SDK を入れられない
+- 動作確認用 APK のリリース画面: https://github.com/techgymjp/offside/releases/tag/android-latest (QR: `docs/apk-qr.png`)
+- 広告は `ads.js`(本番の広告ユニット ID は `UNITS.production`)、AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `admob_app_id`
+- 広告を出す場面: バナーはタイトル・ポーズ・結果画面だけ、全画面広告は「もう一度」「タイトルへ」「再開」のたび、リワード広告は失点したプレーのやり直し(1 ゲーム 5 回)
+- 署名鍵(upload.jks)やパスワードは、チャットに貼らない・コミットしない(GitHub Secrets に入れる)
