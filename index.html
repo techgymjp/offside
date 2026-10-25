@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>オフサイド</title>
+<meta name="theme-color" content="#0a0d1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="rotate">
+  <div class="phone"></div>
+  <p data-i18n="rotate.msg">スマホを横向きにしてください</p>
+  <small data-i18n="rotate.sub">オフサイドは横画面で遊ぶゲームです</small>
+</div>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <canvas id="game" width="960" height="640"></canvas>
+    <div id="langSel" hidden>
+      <button class="langBtn" type="button" data-lang="ja">日本語</button>
+      <button class="langBtn" type="button" data-lang="en">English</button>
+    </div>
+    <button id="rulesBtn" class="rulesBtn" type="button" data-i18n="rules.btn" hidden>📘 オフサイドのルール</button>
+    <div id="rules" hidden>
+      <div class="box">
+        <h2 data-i18n="rules.title">オフサイドのルール</h2>
+        <ol>
+          <li data-i18n-html="rules.1"></li>
+          <li data-i18n-html="rules.2"></li>
+          <li data-i18n-html="rules.3"></li>
+          <li data-i18n-html="rules.4"></li>
+          <li data-i18n-html="rules.5"></li>
+          <li data-i18n-html="rules.6"></li>
+          <li data-i18n-html="rules.7"></li>
+          <li data-i18n-html="rules.8"></li>
+          <li data-i18n-html="rules.9"></li>
+          <li data-i18n-html="rules.10"></li>
+        </ol>
+        <p class="src" data-i18n="rules.src"></p>
+        <button id="rulesClose" class="sbtn retry" type="button" data-i18n="rules.close">閉じる</button>
+      </div>
+    </div>
+    <div id="legal" hidden>
+      <a href="https://techgym.jp/privacy-policy/" data-i18n-href="url.privacy" data-i18n="legal.privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+    </div>
+    <div id="share" hidden>
+      <button id="shareBtn" class="sbtn main" type="button"><span data-i18n="share.btn">📤 結果をシェア</span><small id="shareMsg">成績画像つきでシェアできます</small></button>
+      <div class="row">
+        <a id="shareX" class="sbtn" target="_blank" rel="noopener" data-i18n="share.post">𝕏 ポスト</a>
+        <a id="shareLine" class="sbtn" target="_blank" rel="noopener">LINE</a>
+        <button id="shareCopy" class="sbtn" type="button" data-i18n="share.copy">コピー</button>
+      </div>
+      <div class="row">
+        <button id="retryBtn" class="sbtn retry" type="button" data-i18n="over.retryBtn">もう一度</button>
+        <button id="titleBtn" class="sbtn" type="button" data-i18n="menu.title">タイトルへ</button>
+      </div>
+    </div>
+    <div id="pauseMenu" hidden>
+      <button id="pauseResume" class="sbtn retry" type="button" data-i18n="menu.resume">再開</button>
+      <button id="pauseTitle" class="sbtn" type="button" data-i18n="menu.title">タイトルへ</button>
+    </div>
+  </div>
+</div>
+<script src="vendor/three.min.js"></script>
+<script src="i18n.js"></script>
+<script src="sound.js"></script>
+<script src="scene3d.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
