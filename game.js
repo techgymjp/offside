@@ -180,7 +180,7 @@
     state.order = makeOrder(state.seed);
     Object.assign(state, {
       phase: 'ready', paused: false, index: 0, ok: 0, traps: 0, score: 0,
-      streak: 0, bestStreak: 0, phaseT: 0, overT: 0, popups: [], lastResult: null, newRecord: false, navUsed: false, redoUsed: 0,
+      streak: 0, bestStreak: 0, phaseT: 0, overT: 0, popups: [], lastResult: null, newRecord: false, navUsed: false, redoUsed: 0, markTipDone: false,
     });
     startPlay();
   }
@@ -451,6 +451,9 @@
     state.taps = [];
     state.result = null;
     state.shot = false; state.clearedBy = null; state.goalHow = null; state.mark = null;
+    // このゲームで最初の「マーク」の場面(オフサイドにならない場面)だけ、ボタンの説明を出す
+    p.markTip = !!p.noOff && !state.markTipDone;
+    if (p.markTip) state.markTipDone = true;
     const a = {};
     for (const [k, q] of Object.entries(p.pos)) {
       const home = HOME.includes(k);
@@ -1497,6 +1500,34 @@
     ctx.font = `bold ${Math.round(10 * fk)}px sans-serif`;
     ctx.fillText(isTouch ? t('btn.markSub') : t('btn.markSub') + ' [Space]', b.x, b.y + 28 * fk, b.r * 1.8);
     ctx.restore();
+    if (p.markTip && !on && state.phase === 'build' && !state.released) drawMarkTip();
+  }
+
+  // 最初の「マーク」の場面: ボタンの横に吹き出しで役目を説明し、ボタンのまわりを光らせる
+  function drawMarkTip() {
+    const b = MARKBTN, fs = isTouch ? 24 : 16, lh = Math.round(fs * 1.35);
+    const lines = [t('tip.mark1'), t(isTouch ? 'tip.mark2' : 'tip.mark2.key'), t('tip.mark3')];
+    ctx.save();
+    const pulse = 0.5 + 0.5 * Math.sin(state.time * 6);
+    ctx.strokeStyle = `rgba(255,225,77,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 8 + pulse * 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = `bold ${fs}px sans-serif`;
+    const w = Math.min(W * 0.62, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 36);
+    const h = lines.length * lh + 22;
+    const x = b.x - b.r - 26 - w, y = clamp(b.y - h / 2, 70, H - h - 120);
+    ctx.fillStyle = 'rgba(255,248,214,0.97)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 12); else ctx.rect(x, y, w, h);
+    ctx.fill();
+    // ボタンを指す三角
+    ctx.beginPath(); ctx.moveTo(x + w, b.y - 12); ctx.lineTo(x + w + 18, b.y); ctx.lineTo(x + w, b.y + 12); ctx.closePath(); ctx.fill();
+    ctx.textAlign = 'left';
+    lines.forEach((l, i) => {
+      ctx.fillStyle = i === 0 ? '#7a3d00' : '#1b2440';
+      ctx.font = `${i === 0 ? 900 : 'bold'} ${fs}px sans-serif`;
+      ctx.fillText(l, x + 18, y + 14 + fs + i * lh, w - 30);
+    });
+    ctx.restore();
   }
 
   // パスの瞬間: 判定の結果と 2 本の線のラベル
@@ -2105,7 +2136,7 @@
     state, newGame, update, DT, TOTAL, KINDS, makeOrder,
     setBot(fn) { bot = fn; },
     tap: tapDef, mark: doMark, secondLast, judge,
-    startAt(i, seed) { newGame(seed); state.index = i; startPlay(); },
+    startAt(i, seed) { newGame(seed); state.index = i; state.markTipDone = false; startPlay(); },
   };
 
   Scene3D.init(document.getElementById('view'));
