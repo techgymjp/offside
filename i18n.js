@@ -235,7 +235,7 @@ window.I18N = (() => {
       'card.head': 'OFFSIDE ({nav})',
       'card.goals': '{c}/{t} stops',
       'card.rank': 'Rank: {r}',
-      'card.line1': 'SCORE {s} ・ Offsides {h} ・ Best streak {m}',
+      'card.line1': 'SCORE {s}  ·  Offsides {h}  ·  Best streak {m}',
       'card.tags': '#Offside  #Football  #ClaudeCode',
 
       'rules.title': 'The offside law (Laws of the Game, Law 11)',

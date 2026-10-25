@@ -206,7 +206,7 @@
       at('R', rx, p.lineY - 5, { hold: 0.45, laneX: rx * 0.85 });
       if (kind === 'two') {
         // おとり: 最初からオフサイドポジションでうろうろしている(プレーに関わらなければ反則ではない)
-        at('R2', -m * rand(8, 13), p.lineY + rand(2.4, 3.2), { loiter: true });
+        at('R2', -m * rand(8, 13), p.lineY + 3.0 + rand(1.6, 2.4), { loiter: true }); // 遅れている DF よりも奥
         p.decoy = 'R2';
       } else at('R2', -m * rand(13, 18), p.lineY - 4, { hold: 1.6, laneX: -m * 15 });
       const x0 = lanes[li] * 0.25 + rand(-3, 3);
