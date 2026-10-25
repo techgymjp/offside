@@ -1801,9 +1801,7 @@
 
   // ---------- シェア(結果画面) ----------
   // 対応端末では成績画像つきで共有シートを開き、だめなら X・LINE・コピーで共有する
-  // 紹介記事ができるまでは、公開している場所(GitHub Pages など)のこのページの URL をシェアする。
-  // アプリの中のページは https://localhost なので、アプリでは URL を付けない
-  const SHARE_URL = !NATIVE && /^https?:$/.test(location.protocol) ? location.origin + location.pathname : '';
+  const SHARE_URL = 'https://techgym.jp/column/claude-code-game-offside/'; // 紹介記事
   const shareEl = document.getElementById('share');
   const $id = (id) => document.getElementById(id);
   const navLabel = () => t(state.navUsed ? 'nav.on' : 'nav.off') + (state.redoUsed ? t(state.redoUsed === 1 ? 'nav.redo1' : 'nav.redo', { n: state.redoUsed }) : '');
