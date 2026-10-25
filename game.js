@@ -1513,7 +1513,10 @@
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 8 + pulse * 6, 0, Math.PI * 2); ctx.stroke();
     ctx.font = `bold ${fs}px sans-serif`;
     const w = Math.min(W * 0.62, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 36);
-    const h = lines.length * lh + 22;
+    // 長い行は折り返す(1 行目は見出し)
+    const rows = [];
+    lines.forEach((l, i) => wrapText(l, w - 36).forEach((r) => rows.push({ r, head: i === 0 })));
+    const h = rows.length * lh + 22;
     const x = b.x - b.r - 26 - w, y = clamp(b.y - h / 2, 70, H - h - 120);
     ctx.fillStyle = 'rgba(255,248,214,0.97)';
     ctx.beginPath();
@@ -1522,10 +1525,10 @@
     // ボタンを指す三角
     ctx.beginPath(); ctx.moveTo(x + w, b.y - 12); ctx.lineTo(x + w + 18, b.y); ctx.lineTo(x + w, b.y + 12); ctx.closePath(); ctx.fill();
     ctx.textAlign = 'left';
-    lines.forEach((l, i) => {
-      ctx.fillStyle = i === 0 ? '#7a3d00' : '#1b2440';
-      ctx.font = `${i === 0 ? 900 : 'bold'} ${fs}px sans-serif`;
-      ctx.fillText(l, x + 18, y + 14 + fs + i * lh, w - 30);
+    rows.forEach((q, i) => {
+      ctx.fillStyle = q.head ? '#7a3d00' : '#1b2440';
+      ctx.font = `${q.head ? 900 : 'bold'} ${fs}px sans-serif`;
+      ctx.fillText(q.r, x + 18, y + 14 + fs + i * lh, w - 30);
     });
     ctx.restore();
   }
@@ -1749,17 +1752,17 @@
     ctx.fillStyle = 'rgba(8,14,20,0.68)';
     ctx.fillRect(0, 0, W, H);
     // 下の方(y 約 300〜500)は HTML のシェア・もう一度ボタンなので上に詰める
-    centerText(t('over.title'), 84, 32, '#ffffff', '900');
-    centerText(t('over.goals', { c: state.ok, t: TOTAL }), 130, 40, state.ok === TOTAL ? '#ffe14d' : '#9fe8ff', '900');
-    if (state.ok === TOTAL) centerText(t('over.perfect'), 160, 18, '#ffe14d');
+    centerText(t('over.title'), 104, 30, '#ffffff', '900');
+    centerText(t('over.goals', { c: state.ok, t: TOTAL }), 146, 40, state.ok === TOTAL ? '#ffe14d' : '#9fe8ff', '900');
+    if (state.ok === TOTAL) centerText(t('over.perfect'), 174, 18, '#ffe14d');
     const [rank, col] = rankOf(state.ok);
-    centerText(t('over.rank', { r: rank }), 190, 22, col);
+    centerText(t('over.rank', { r: rank }), 202, 22, col);
     ctx.font = '16px sans-serif';
     ctx.fillStyle = '#e6e6e6';
     ctx.textAlign = 'center';
-    ctx.fillText(t('over.line1', { s: state.score, h: state.traps, m: state.bestStreak, nav: navLabel() }), W / 2, 220, W - 40);
-    if (state.newRecord) centerText(t('over.new'), 256, 20, '#ff8a65');
-    else if (state.best) centerText(t('over.best', { c: state.best.ok, s: state.best.score }), 256, 17, '#9fe8ff');
+    ctx.fillText(t('over.line1', { s: state.score, h: state.traps, m: state.bestStreak, nav: navLabel() }), W / 2, 228, W - 40);
+    if (state.newRecord) centerText(t('over.new'), 260, 20, '#ff8a65');
+    else if (state.best) centerText(t('over.best', { c: state.best.ok, s: state.best.score }), 260, 17, '#9fe8ff');
   }
 
   // ---------- シェア(結果画面) ----------
@@ -1878,8 +1881,7 @@
     if (state.phase !== 'title') {
       drawBadges();
       drawMarkButton();
-      drawMinimap();
-      drawHUD();
+      if (state.phase !== 'over') { drawMinimap(); drawHUD(); } // 結果画面では隠す(上のボタンや見出しと重なるため)
       drawMessage();
       drawVar();
       drawPopups();

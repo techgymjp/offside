@@ -1,0 +1,53 @@
+Offside Trap - English source text for machine translation (Google Play store listing)
+
+This version uses short, plain sentences without idioms or slang, so that automatic translation
+into other languages stays accurate. Keep the game name "Offside Trap" untranslated.
+
+[App name] (max 30 characters)
+Offside Trap: Hold the Line
+
+[Short description] (max 80 characters)
+Move your defenders up when the pass is made. Learn the offside rule in 3D.
+
+[Full description] (max 4000 characters)
+You play soccer in a stadium at night. You control the defenders of the red team. The other team attacks your goal.
+When the other team passes the ball, move your defenders up. Then the attacker is in an offside position. There are 10 attacks in one game. How many attacks can you stop? You also learn the offside rule.
+
+■ MOVE THE LINE UP WHEN THE PASS IS MADE
+• You control the red defenders. The other team attacks with dribbles and long passes.
+• Tap the number of a defender who is behind the others. He runs forward and moves the line up.
+• If you move too early, the attacker goes back. If you move after the pass, it is too late. The referee decides offside when the ball is kicked.
+• At the moment of the pass, the game shows two lines in slow motion: the second-last defender and the attacker. It also shows the distance between them.
+• When the attacker touches the ball, the assistant referee raises the flag.
+
+■ SOMETIMES THERE IS NO OFFSIDE
+• There is no offside from a throw-in, a goal kick or a corner kick.
+• There is no offside for a player behind the ball, or for a player who starts in his own half.
+• In these cases, do not move the line up. Press the MARK button. Your defender stays close to the attacker and wins the ball.
+• If you move the line up, the attacker is free and scores.
+
+■ THE REAL OFFSIDE RULE (LAW 11)
+• The goalkeeper counts as a defender. If the goalkeeper comes forward, move up the defender behind him.
+• A player in an offside position does not break the rule if he does not play the ball.
+• For a long pass, the referee also decides offside when the ball is kicked. There is offside from a free kick and from a goalkeeper throw.
+• A defender who leaves the field counts as standing on the goal line.
+• There are 13 types of attacks. The players stand in new places every time.
+• After each play, the game explains the result. You can read the rules on the title screen.
+
+■ 3D VIEW LIKE A TV BROADCAST
+• You see the defenders from the side, high in the stands. You can always see the line.
+• The stadium is full. You hear drums, clapping and cheers.
+• There are fireworks when you catch an attacker offside.
+
+■ PRACTICE WITH NAV
+• NAV shows the offside line in red, a sign before the pass and a short checklist.
+• If you play without NAV, you get 1.5 times more points.
+
+■ OTHER FEATURES
+• Ranks from "Leaky Defence" to "Master of the Offside Trap"
+• Share your score and rank with friends.
+• If the other team scores, you can watch an ad and play the same attack again (up to 5 times in one game).
+• You can play offline. Ads and sharing need an internet connection.
+• English and Japanese
+
+Kick off! Move the line up and stop the attack!

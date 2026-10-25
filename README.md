@@ -136,6 +136,8 @@ AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `adm
 本番の広告ユニット ID はバナー・インタースティシャル・リワードの 3 つとも入っています(空にした種類は Google Play 用の AAB では出さない)。
 動作確認用 APK はどれもテスト広告、Google Play 用の AAB は本番の広告です。
 
+Google Play のストア掲載情報(日英の紹介文・リリースノート)とスクリーンショット・フィーチャーグラフィックは `docs/store/` にあります(`docs/store/listing.md`)。
+
 手元で試すとき: `npm install` → `npm run android:sync` → `npm run android:open`(Android Studio が必要)。
 アイコンと起動画面は `assets/` の元画像(夜のスタジアムで副審の旗とオフサイドライン)から作っています。
 
