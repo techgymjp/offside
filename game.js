@@ -28,6 +28,7 @@
   const VAR_T = 1.3, VAR_K = 0.22;     // パスの瞬間のスローモーション(実時間・倍率)
   // 「◯プレー目」と場面の表示は READY_SHOW 秒で消え(最後の READY_FADE 秒でフェード)、少し間をおいて READY_T 秒に笛が鳴ってプレーが始まる
   const READY_SHOW = 2.3, READY_FADE = 0.5, READY_T = 3.1;
+  const NO_NAV_K = 1.5;               // ナビなしで守ったときの得点の倍率
   const HUD_K = 1.4;                   // スマホの左上の成績の拡大率
   const DT = 1 / 120;
   const DEFS = ['d1', 'd2', 'd3', 'd4'];                 // 左から(画面の上=奥から)1〜4 キー
@@ -1026,6 +1027,8 @@
         if (p.noOff && state.mark && !state.taps.length) { popup(t('res.read'), '#7dffb0', 30, 0.2); big = true; }
         Sound.whistle(0.3);
       }
+      // ナビを使わずに守ったら 1.5 倍(そのプレーのビルドアップ中に一度でもナビが ON なら付かない)
+      if (!p.navSeen) { pts = Math.round(pts * NO_NAV_K); popup(t('res.noNav', { k: NO_NAV_K }), '#ffcc80', 24, 0.3); }
       state.score += pts;
       popup('+' + pts, '#9fe8ff', 26, 0.4);
       Sound.cheer(big ? 1.5 : 1.2, big ? 4.5 : 3.5);
@@ -1161,7 +1164,7 @@
     if (isPortrait()) { if (!state.paused) state.paused = true; return; }
     if (state.paused) { pressed.next = false; return; }
     updateRedo(dt);
-    if (state.nav && state.phase === 'build') state.navUsed = true;
+    if (state.nav && state.phase === 'build') { state.navUsed = true; state.play.navSeen = true; }
 
     // パスの瞬間はスローモーション(判定のラインを見せる)
     let sdt = dt;
