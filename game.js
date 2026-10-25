@@ -25,9 +25,10 @@
   const HOME_V = 7.6, HOME_ACC = 14, HOME_REACT = 0.32, TURN_T = 0.3; // 裏へのボールは振り返るぶん遅れる
   const GK_V = 6.6, GK_REACT = 0.4;
   const STEP_V = 7.0, STEP_ACC = 16, STEP_PAST = 1.5; // ラインより STEP_PAST だけ前まで出る
-  const VAR_T = 1.3, VAR_K = 0.22;
-  const READY_T = 2.3, READY_FADE = 0.5;
-  const HUD_K = 1.4;                       // スマホの左上の成績の拡大率   // 「◯プレー目」と場面の表示(最後の READY_FADE 秒で消える)     // パスの瞬間のスローモーション(実時間・倍率)
+  const VAR_T = 1.3, VAR_K = 0.22;     // パスの瞬間のスローモーション(実時間・倍率)
+  // 「◯プレー目」と場面の表示は READY_SHOW 秒で消え(最後の READY_FADE 秒でフェード)、少し間をおいて READY_T 秒に笛が鳴ってプレーが始まる
+  const READY_SHOW = 2.3, READY_FADE = 0.5, READY_T = 3.1;
+  const HUD_K = 1.4;                   // スマホの左上の成績の拡大率
   const DT = 1 / 120;
   const DEFS = ['d1', 'd2', 'd3', 'd4'];                 // 左から(画面の上=奥から)1〜4 キー
   const HOME = ['d1', 'd2', 'd3', 'd4', 'm1', 'm2', 'gk'];
@@ -1262,8 +1263,57 @@
     cy = clamp(cy, -GL + 18, GL - 14);
     // 奥のタッチライン沿いの場面(スローイン・サイド突破)は、カメラを奥へ寄せる
     const vx = p && (p.kind === 'throw' || p.kind === 'cutback' || p.kind === 'corner') && state.phase !== 'attack' ? -11 : 0;
+    // スマホは画面が小さいので、プレーに関わる選手とボールが収まるところまでズームする
+    if (isTouch && p && state.phase !== 'title') {
+      // スタンドの中段(屋根より下)まで下がって望遠で撮る: 奥の選手も大きく映り、手前との大きさの差も小さい
+      back = 52 - vx * 0.3; h = 25;
+      const f = zoomFrame(framePoints(), vx + back, h);
+      if (f) { cy = f.y; pitch = f.pitch; fov = f.fov; }
+    }
     state.view = { x: vx, y: cy, fx: -1, fy: 0, back, h, pitch, turn, fov, cut: !!state.viewCut };
     state.viewCut = false;
+  }
+
+  // ズームで画面に入れる点(選手は頭の上のバッジのぶん高めに)
+  function framePoints() {
+    const p = state.play, a = state.actors, b = state.ball, J = state.judge;
+    const pts = [];
+    const add = (q, z = 2.0) => { if (q) { pts.push({ x: q.x, y: q.y, z: 0 }, { x: q.x, y: q.y, z }); } };
+    const ball = () => pts.push({ x: b.x, y: b.y, z: b.z });
+    if (state.phase === 'build' || state.phase === 'ready') {
+      for (const k of DEFS) if (!a[k].off) add(a[k], 2.8);
+      add(a[p.kicker]); add(a[p.receiver]); ball();
+    } else if (state.phase === 'var') {
+      add(a[J.sl.k]); add(a[p.receiver]);
+      for (const k of DEFS) if (!a[k].off) add(a[k]);
+    } else if (state.phase === 'result' && J && state.lastResult && state.lastResult.kind === 'offside') {
+      add(a[J.sl.k]); add(a[p.receiver]); add(a.ar, 2.6);
+    } else {
+      add(a[p.receiver]); ball();
+      if (b.y > GL - 25) { add(a.gk); pts.push({ x: -GOAL_W, y: GL, z: GOAL_H }, { x: GOAL_W, y: GL, z: 0 }); }
+    }
+    return pts;
+  }
+
+  // 点が全部入る、いちばん狭い画角(ズーム)とカメラの向き。上の成績と下の案内に隠れないよう余白をとる
+  function zoomFrame(pts, camX, h) {
+    if (!pts.length) return null;
+    const ys = pts.map((q) => q.y);
+    const cy = clamp((Math.min(...ys) + Math.max(...ys)) / 2, -GL + 18, GL - 14);
+    let elMin = Infinity, elMax = -Infinity, tanH = 0;
+    for (const q of pts) {
+      const dist = Math.max(4, camX - q.x);
+      const el = Math.atan2(q.z - h, Math.hypot(dist, q.y - cy));
+      elMin = Math.min(elMin, el); elMax = Math.max(elMax, el);
+      tanH = Math.max(tanH, Math.abs(q.y - cy) / dist);
+    }
+    const USE = 0.66;                         // 画面の縦のうち、選手を映す割合(上下は成績・案内・ボタン)
+    const vfovV = (elMax - elMin) / USE;
+    const vfovH = 2 * Math.atan(tanH * 1.12 / (W / H));
+    const fov = clamp(Math.max(vfovV, vfovH) * 180 / Math.PI, 26, 66);
+    // 上の成績のほうが下の案内より大きいので、選手は少し下寄りに映す
+    const pitch = (elMin + elMax) / 2 + fov * Math.PI / 180 * 0.04;
+    return { y: cy, pitch, fov };
   }
 
   function gameOver() {
@@ -1375,6 +1425,8 @@
     }
     // 下の案内の帯に重ならないように
     for (const q of list) { q.x = clamp(q.x, r + 4, W - r - 4); q.y = clamp(q.y, r + 4, H - (isTouch ? 116 : 96) - r); }
+    // 「マーク」ボタンに重なるバッジは左へずらす
+    for (const q of list) if (Math.hypot(q.x - MARKBTN.x, q.y - MARKBTN.y) < r + MARKBTN.r + 6) q.x = MARKBTN.x - MARKBTN.r - r - 8;
     state.badges = list;
   }
 
@@ -1597,8 +1649,8 @@
     if (!p || state.paused) return;
     let a = 0, k = 1;
     if (state.phase === 'ready') {
-      a = Math.min(1, state.phaseT / 0.2, (READY_T - state.phaseT) / READY_FADE);
-      k = 1 + Math.max(0, 0.2 - state.phaseT) * 2.5 + Math.max(0, state.phaseT - (READY_T - READY_FADE)) * 0.4;
+      a = Math.min(1, state.phaseT / 0.2, (READY_SHOW - state.phaseT) / READY_FADE);
+      k = 1 + Math.max(0, 0.2 - state.phaseT) * 2.5 + Math.max(0, state.phaseT - (READY_SHOW - READY_FADE)) * 0.4;
     }
     if (a <= 0) return;
     const text = t('call.' + p.kind);
@@ -1786,7 +1838,7 @@
       drawExplain();
       if (state.phase === 'ready' && !state.paused) {
         ctx.save();
-        ctx.globalAlpha = clamp((READY_T - state.phaseT) / READY_FADE, 0, 1);
+        ctx.globalAlpha = clamp((READY_SHOW - state.phaseT) / READY_FADE, 0, 1);
         centerText(t('ready.play', { n: state.index + 1 }), 215, 34, '#ffffff', '900');
         centerText(t('ready.sub'), 405, 22, '#ffcc80');
         ctx.restore();

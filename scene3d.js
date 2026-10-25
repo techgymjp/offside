@@ -9,6 +9,9 @@ window.Scene3D = (() => {
   const HX = 34, GL = 52.5;
   const GOAL_W = 3.66, GOAL_H = 2.44, NET_D = 2.0;
   const BALL_R = 0.15; // 見やすさのため実物(0.11)より少し大きい
+  // スマホは画面が小さいので、選手とボールの見た目だけ大きくする(当たり判定は game.js のまま)
+  const TOUCH = window.matchMedia('(pointer: coarse)').matches;
+  const PLAYER_K = TOUCH ? 1.25 : 1, BALL_K = TOUCH ? 1.5 : 1;
 
   let renderer, scene, camera, ready = false;
   let ballMesh, ballShadow, screens = null;
@@ -465,7 +468,7 @@ window.Scene3D = (() => {
   function buildPlayers() {
     for (const [k, [team, num, hair, gloves, flag]] of Object.entries(ROSTER)) {
       rigs[k] = makePlayer(team, num, hair, gloves, flag);
-      rigs[k].root.scale.setScalar(k === 'gk' || k === 'ogk' ? 1.08 : 1.02);
+      rigs[k].root.scale.setScalar((k === 'gk' || k === 'ogk' ? 1.08 : 1.02) * PLAYER_K);
     }
   }
 
@@ -489,6 +492,7 @@ window.Scene3D = (() => {
     });
     const geo = new THREE.SphereGeometry(BALL_R, 20, 14);
     ballMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex, emissive: 0x333333 }));
+    ballMesh.scale.setScalar(BALL_K);
     scene.add(ballMesh);
     ballShadow = new THREE.Mesh(new THREE.CircleGeometry(0.26, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }));
     ballShadow.rotation.x = -Math.PI / 2;
@@ -850,7 +854,7 @@ window.Scene3D = (() => {
       }
     }
     r.shadow.position.set(p.x, 0.03, -p.y);
-    r.shadow.scale.setScalar(shadowScale);
+    r.shadow.scale.setScalar(shadowScale * PLAYER_K);
   }
 
   function placeBall(state) {
@@ -863,12 +867,12 @@ window.Scene3D = (() => {
       holder.root.updateMatrixWorld(true);
       (ball.overHead ? holder.overHead : holder.hands).getWorldPosition(ballMesh.position);
     } else {
-      ballMesh.position.set(ball.x, ball.z, -ball.y); // ball.z はボールの中心の高さ
+      ballMesh.position.set(ball.x, Math.max(ball.z, BALL_R * BALL_K), -ball.y); // ball.z はボールの中心の高さ
       ballMesh.rotation.set(ball.spinX || 0, ball.spinY || 0, 0);
     }
     ballShadow.position.set(ballMesh.position.x, 0.04, ballMesh.position.z);
     const h = Math.max(0, ballMesh.position.y);
-    ballShadow.scale.setScalar(Math.max(0.45, 1 - h * 0.06));
+    ballShadow.scale.setScalar(Math.max(0.45, 1 - h * 0.06) * BALL_K);
     ballShadow.material.opacity = Math.max(0.22, 0.55 - h * 0.03);
   }
 
