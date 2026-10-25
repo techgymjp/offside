@@ -1021,7 +1021,7 @@
         const r = a[p.receiver]; r.vx *= 0.2; r.vy *= 0.2; setMode(r, 'sad');
         const b = state.ball; b.vx *= 0.15; b.vy *= 0.15; b.vz = 0; b.z = R;
       } else {
-        pts = (p.noOff && state.mark && !state.taps.length ? 900 : 600) + sb;
+        pts = (p.noOff && state.mark && !state.taps.length ? 1000 : 600) + sb; // 「マーク」で守ったらオフサイドと同じ 1000 点
         popup(t(kind === 'catch' ? 'res.catch' : 'res.clear'), '#ffe14d', 56);
         if (p.noOff && state.mark && !state.taps.length) { popup(t('res.read'), '#7dffb0', 30, 0.2); big = true; }
         Sound.whistle(0.3);
