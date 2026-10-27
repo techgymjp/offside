@@ -1,0 +1,5 @@
+/* Name shown on the home screen */
+"CFBundleDisplayName" = "Offside Trap";
+
+/* App Tracking Transparency prompt */
+"NSUserTrackingUsageDescription" = "This identifier is used to show you more relevant ads. The game is free thanks to ads.";
