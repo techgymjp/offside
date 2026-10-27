@@ -43,3 +43,11 @@ This game supports Japanese and English (auto-selected from the device language,
 - 広告は `ads.js`(本番の広告ユニット ID は `UNITS.production`)、AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `admob_app_id`
 - 広告を出す場面: バナーはタイトル(操作説明・ルールのページを含む)・ポーズ・結果画面だけ、全画面広告はプレイを始めるとき・「もう一度」「タイトルへ」・操作説明/ルールのページから「タイトルに戻る」・「再開」のたび、リワード広告は失点したプレーのやり直し(1 ゲーム 5 回)
 - 署名鍵(upload.jks)やパスワードは、チャットに貼らない・コミットしない(GitHub Secrets に入れる)
+
+## iOS アプリ
+
+- 構成は techgymjp/jet-fighter の iOS 版と同じ(`ios/`、Swift Package Manager)。Bundle ID は `jp.techgym.offside`
+- Mac での作業手順は `docs/IOS_BUILD.md`。クラウドの Claude Code ではビルドできないので、GitHub Actions(`.github/workflows/ios.yml`)で署名なしのビルドだけ確認する
+- 広告ユニットは `ads.js` の `UNITS.ios`、AdMob のアプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`
+- App Store 用の画像は `docs/store/ios/`(スクリーンショットは 2622×1206。6.9 インチは受け付けられない)
+- 初回の審査では実機(iPhone)での操作の画面録画を求められる。提出前に TestFlight で入れて撮っておく

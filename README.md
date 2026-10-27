@@ -143,6 +143,19 @@ Google Play のストア掲載情報(日英の紹介文・リリースノート)
 手元で試すとき: `npm install` → `npm run android:sync` → `npm run android:open`(Android Studio が必要)。
 アイコンと起動画面は `assets/` の元画像(夜のスタジアムで副審の旗とオフサイドライン)から作っています。
 
+## iOS アプリ
+
+Android 版と同じ Capacitor のプロジェクトに `ios/` を足して作っています。構成は techgymjp/jet-fighter(JET STRIKE)の iOS 版と同じです。
+Mac での作業手順(ビルド・App Store Connect へのアップロード・審査用の画面録画・審査への提出)は `docs/IOS_BUILD.md` にあります。
+
+- Bundle ID: `jp.techgym.offside`(Android と同じ)。ホーム画面の名前は「オフサイドトラップ」/「Offside Trap」
+- iPhone 専用・横画面固定・全画面・プレイ中は画面を消さない(iPad では iPhone 用の画面で動く)
+- 広告は Android と同じ場面(バナー・全画面広告・リワード広告)。iOS では起動時に同意確認のあと「トラッキングの許可」を確認する
+- 広告ユニットは `ads.js` の `UNITS.ios`、AdMob のアプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`(本番の ID が届くまではテスト用)
+- `npm run ios:sync`(テスト広告)/ `npm run ios:release`(本番広告。App Store 用)/ `npm run ios:open`(Xcode で開く)
+- GitHub Actions(`.github/workflows/ios.yml`)で、push のたびに署名なしでビルドできるかを確認する
+- App Store 用の画像は `docs/store/ios/`(スクリーンショット 2622×1206 日英各 4 枚、ヘッダ 3840×1646、検索結果 3840×2560)
+
 ## ファイル
 
 | ファイル | 内容 |
@@ -152,7 +165,7 @@ Google Play のストア掲載情報(日英の紹介文・リリースノート)
 | `sound.js` | 音(Web Audio API で合成) |
 | `i18n.js` | 日本語 / 英語の文言(ルールの説明を含む) |
 | `ads.js` | 広告(AdMob。Android アプリのときだけ動く) |
-| `android/` `capacitor.config.json` `scripts/build-web.js` | Android アプリ(Capacitor) |
+| `android/` `ios/` `capacitor.config.json` `scripts/build-web.js` | Android / iOS アプリ(Capacitor) |
 
 テスト用に `window.Offside`(`newGame(seed)`、`startAt(index, seed)`、`update(dt)`、`setBot(fn)`、`tap(key)`、`forceKind` など)を公開しています。
 
@@ -169,4 +182,5 @@ Google Play のストア掲載情報(日英の紹介文・リリースノート)
 - You control the red back line, seen from a TV-style camera high in the main stand. Tap the defender who is lagging behind (or press 1–4) right as the pass is played — he steps up and springs the trap.
 - Too early and the striker drops back onside; after the pass is too late. A VAR slow-motion shows the second-last defender's line, the receiver's line and the gap, and the assistant referee flags once the offside player gets involved.
 - Each game picks 10 plays at random from 13 situations, with new player positions every time. They cover the key conditions of Law 11: the moment of the pass, long balls, level = onside, the keeper counting as an opponent, passive offside, own half, behind the ball, no offside from throw-ins, goal kicks and corners (free kicks and keeper's throws do count), and a defender off the pitch counting as on the goal line. Each result comes with a short explanation.
+- Also available as an Android and iOS app (Capacitor). See `docs/IOS_BUILD.md` for the iOS build steps.
 - Open `index.html` in a browser to play.
