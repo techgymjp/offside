@@ -151,7 +151,7 @@ Mac での作業手順(ビルド・App Store Connect へのアップロード・
 - Bundle ID: `jp.techgym.offside`(Android と同じ)。ホーム画面の名前は「オフサイドトラップ」/「Offside Trap」
 - iPhone 専用・横画面固定・全画面・プレイ中は画面を消さない(iPad では iPhone 用の画面で動く)
 - 広告は Android と同じ場面(バナー・全画面広告・リワード広告)。iOS では起動時に同意確認のあと「トラッキングの許可」を確認する
-- 広告ユニットは `ads.js` の `UNITS.ios`、AdMob のアプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`(本番の ID が届くまではテスト用)
+- 広告ユニットは `ads.js` の `UNITS.ios`、AdMob のアプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`
 - `npm run ios:sync`(テスト広告)/ `npm run ios:release`(本番広告。App Store 用)/ `npm run ios:open`(Xcode で開く)
 - GitHub Actions(`.github/workflows/ios.yml`)で、push のたびに署名なしでビルドできるかを確認する
 - App Store 用の画像は `docs/store/ios/`(スクリーンショット 2622×1206 日英各 4 枚、ヘッダ 3840×1646、検索結果 3840×2560)

@@ -24,10 +24,10 @@ window.Ads = (() => {
         rewarded: 'ca-app-pub-3940256099942544/1712485313',
         banner: 'ca-app-pub-3940256099942544/2934735716',
       },
-      // AdMob の「オフサイドトラップ」(iOS)。ID が届いていない種類は空
+      // AdMob の「オフサイドトラップ」(iOS)
       production: {
         interstitial: 'ca-app-pub-6411535997477460/2107922966',
-        rewarded: '',
+        rewarded: 'ca-app-pub-6411535997477460/9350941982',
         banner: 'ca-app-pub-6411535997477460/4402913810',
       },
     },
