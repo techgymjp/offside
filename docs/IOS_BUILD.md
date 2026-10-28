@@ -5,7 +5,7 @@
 コードの準備はできているので、Mac では「ビルドして App Store Connect にアップロードする」作業だけを行います。
 
 - Bundle ID：`jp.techgym.offside`（Android と同じ）
-- アプリ名（App Store）：日本語「オフサイドトラップ 〜ラインを上げて罠にかけろ〜」／英語「Offside Trap: Hold the Line」
+- アプリ名（App Store）：日本語「オフサイドトラップ 〜ラインを上げて罠にかけろ〜」／英語「Offside Trap: Soccer Defense」
 - ホーム画面の名前：日本語「オフサイドトラップ」／英語「Offside Trap」
 - チーム：Team ID `GNM3VTX9YG`（Xcode の設定に入れてあります）。Apple Developer には**個人で登録**しています（App Store の販売元は個人名になります）
 - 対応端末：iPhone（横画面固定）。iPad では iPhone 用の画面で動きます
