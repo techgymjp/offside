@@ -26,7 +26,7 @@ window.Ads = (() => {
       },
       // AdMob の「オフサイドトラップ」(iOS)。ID が届いていない種類は空
       production: {
-        interstitial: '',
+        interstitial: 'ca-app-pub-6411535997477460/2107922966',
         rewarded: '',
         banner: 'ca-app-pub-6411535997477460/4402913810',
       },
