@@ -35,8 +35,6 @@ jobs:
       BUNDLE_ID: jp.techgym.offside
       TEAM_ID: GNM3VTX9YG
       PROFILE_NAME: offside App Store (GitHub Actions)
-      # Mac の Xcode から手で上げるビルド(1, 2, 3…)と重ならないよう、101 から始める
-      BUILD_NUMBER: ${{ github.run_number + 100 }}
     steps:
       - name: Check secrets
         if: env.HAS_SECRETS != 'true'
@@ -44,6 +42,11 @@ jobs:
 
       - uses: actions/checkout@v4
         if: env.HAS_SECRETS == 'true'
+
+      # Mac の Xcode から手で上げるビルド(1, 2, 3…)と重ならないよう、101 から始める
+      - name: Set the build number
+        if: env.HAS_SECRETS == 'true'
+        run: echo "BUILD_NUMBER=$((GITHUB_RUN_NUMBER + 100))" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         if: env.HAS_SECRETS == 'true'
