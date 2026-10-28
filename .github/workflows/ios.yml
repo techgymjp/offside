@@ -43,10 +43,10 @@ jobs:
           npm run build
           npx cap sync ios
 
-      # bash は pipefail で動くので、xcodebuild が失敗すればこのステップも失敗する
       - name: Build for the simulator (no signing)
         working-directory: ios/App
         run: |
+          set -o pipefail  # xcodebuild が失敗したら、tail を通してもこのステップを失敗にする
           xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build | tail -40

@@ -166,16 +166,21 @@ A screen recording on a physical iPhone is attached.
 
 ---
 
-## 7. 自動化（2回目以降を GitHub Actions に任せる場合）
+## 7. 自動化（GitHub Actions で TestFlight にアップロード）
 
-JET STRIKE と同じく、push するだけで GitHub Actions がビルドして TestFlight にアップロードできるようにできます。
-準備（App Store Connect の API キーと配布用の証明書）は techgymjp/jet-fighter の `docs/IOS_BUILD.md` の 7 章と同じです。
-API キーと証明書はチーム共通なので、JET STRIKE で作ったものを使い回せます。ただし Secrets はリポジトリごとなので、
-`https://github.com/techgymjp/offside/settings/secrets/actions` に同じ 5 つ（`IOS_DIST_CERT_P12_BASE64` / `IOS_DIST_CERT_PASSWORD` / `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_P8_BASE64`）を登録してから、Claude Code に「iOS の自動アップロードのワークフローを作って」と頼みます。
+`.github/workflows/ios-release.yml` が、既定のブランチへの push のたびに（または Actions →「iOS TestFlight upload」→「Run workflow」で）、
+**本番の広告の設定**でビルドして App Store Connect（TestFlight）にアップロードします。Mac での 3 章の作業の代わりになります。審査への提出は、これまでどおり App Store Connect で行います。
 
-いまの `.github/workflows/ios.yml` は、push のたびに「署名なしでビルドできるか」だけを確かめるものです（App Store には出しません）。
+- 必要な Secrets（登録済み）：`IOS_DIST_CERT_P12_BASE64` / `IOS_DIST_CERT_PASSWORD` / `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_P8_BASE64`
+  （作り方は techgymjp/jet-fighter の `docs/IOS_BUILD.md` の 7 章。API キーと証明書はチーム共通なので、JET STRIKE と同じものでよい）
+- ビルド番号は **101 から**自動で増える（Actions の実行回数 + 100）。Mac の Xcode から手で上げるビルド（1、2、3…）とは重ならない
+- 署名用のプロファイル（「offside App Store (GitHub Actions)」）は、API キーで自動的に作られる（`scripts/ios-profile.py`）
+- 終わると、実行のページに「ビルド ◯ を App Store Connect にアップロードしました」と出る。10〜30 分ほどで TestFlight に表示される
+- 失敗したら、実行のページの赤いステップのログを Claude Code に見せる
 
-**注意**：証明書（.p12）、そのパスワード、API キー（.p8）は、チャット・AI へのアップロード・リポジトリへのコミットで**絶対に共有しない**でください。
+いまの `.github/workflows/ios.yml` は、push のたびに「署名なしでビルドできるか」だけを確かめるものです。
+
+**注意**：証明書（.p12）、そのパスワード、API キー（.p8）は、チャット・AI へのアップロード・リポジトリへのコミットで**絶対に共有しない**でください。誤って共有したら、App Store Connect で API キーを取り消し、証明書も取り消して作り直します。
 
 ---
 

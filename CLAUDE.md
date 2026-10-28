@@ -47,7 +47,7 @@ This game supports Japanese and English (auto-selected from the device language,
 ## iOS アプリ
 
 - 構成は techgymjp/jet-fighter の iOS 版と同じ(`ios/`、Swift Package Manager)。Bundle ID は `jp.techgym.offside`
-- Mac での作業手順は `docs/IOS_BUILD.md`。クラウドの Claude Code ではビルドできないので、GitHub Actions(`.github/workflows/ios.yml`)で署名なしのビルドだけ確認する
+- Mac での作業手順は `docs/IOS_BUILD.md`。クラウドの Claude Code ではビルドできないので、GitHub Actions を使う: `.github/workflows/ios.yml` は署名なしのビルド確認、`.github/workflows/ios-release.yml` は本番の広告でビルドして TestFlight にアップロード(ビルド番号は Actions の実行回数 + 100。Secrets 5 つ)
 - 広告ユニットは `ads.js` の `UNITS.ios`、AdMob のアプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`
 - App Store 用の画像は `docs/store/ios/`(スクリーンショットは 2622×1206。6.9 インチは受け付けられない)
 - 初回の審査では実機(iPhone)での操作の画面録画を求められる。提出前に TestFlight で入れて撮っておく
