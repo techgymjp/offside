@@ -108,6 +108,9 @@ GK が手で投げたボールの判定位置(2025/26 の改正)・罰則(間接
 
 ## Android アプリ
 
+Google Play で公開中: https://play.google.com/store/apps/details?id=jp.techgym.offside
+(ブラウザ版のタイトル画面の「📱 Android アプリ」ボタンからも開けます。アプリの中では出しません)
+
 [Capacitor](https://capacitorjs.com/) でゲームのファイルをアプリに同梱し、Android アプリにしています(オフラインで遊べます)。
 構成は techgymjp/jet-fighter の `docs/ANDROID_PORTING.md`、techgymjp/corner-kick と同じです。
 
@@ -182,5 +185,5 @@ Mac での作業手順(ビルド・App Store Connect へのアップロード・
 - You control the red back line, seen from a TV-style camera high in the main stand. Tap the defender who is lagging behind (or press 1–4) right as the pass is played — he steps up and springs the trap.
 - Too early and the striker drops back onside; after the pass is too late. A VAR slow-motion shows the second-last defender's line, the receiver's line and the gap, and the assistant referee flags once the offside player gets involved.
 - Each game picks 10 plays at random from 13 situations, with new player positions every time. They cover the key conditions of Law 11: the moment of the pass, long balls, level = onside, the keeper counting as an opponent, passive offside, own half, behind the ball, no offside from throw-ins, goal kicks and corners (free kicks and keeper's throws do count), and a defender off the pitch counting as on the goal line. Each result comes with a short explanation.
-- Also available as an Android and iOS app (Capacitor). See `docs/IOS_BUILD.md` for the iOS build steps.
+- Also available as an Android app on Google Play (https://play.google.com/store/apps/details?id=jp.techgym.offside; linked from the "📱 Android app" button on the web version's title screen) and as an iOS app (Capacitor). See `docs/IOS_BUILD.md` for the iOS build steps.
 - Open `index.html` in a browser to play.

@@ -272,6 +272,17 @@ html, body {
   cursor: pointer;
 }
 
+/* ブラウザ版だけに出す、Google Play のアプリへのリンク */
+.storeBtn {
+  text-decoration: none;
+  border-color: #6fdc8c;
+  color: #6fdc8c;
+}
+
+.storeBtn[hidden] {
+  display: none;
+}
+
 /* 操作説明・ルールのページ(キャンバスの上に重ねる。下はアプリのバナー広告のぶん空ける) */
 .page {
   position: absolute;
