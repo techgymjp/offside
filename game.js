@@ -2110,7 +2110,9 @@
   const menuEl = $id('titleMenu'), rulesEl = $id('rules'), howtoEl = $id('howto');
   for (const el of [legalEl, menuEl, rulesEl, howtoEl]) for (const ev of ['pointerdown', 'pointerup', 'keydown']) el.addEventListener(ev, (e) => e.stopPropagation());
   $id('rulesBtn').addEventListener('click', () => { audio(); rulesEl.hidden = false; });
-  $id('storeBtn').hidden = NATIVE; // ブラウザ版だけ、Google Play のアプリへのリンクを出す
+  // web-only:start(アプリ用のビルドでは取り除く。scripts/build-web.js)
+  $id('storeBtn').hidden = false; // ブラウザ版だけ、Google Play のアプリへのリンクを出す
+  // web-only:end
   // 操作説明のページ(スマホとキーボードで文が違う)
   function fillHowto() {
     $id('howtoList').innerHTML = [1, 2, 3, 4, 5, 6].map((i) => `<li>${t(`help.${isTouch ? 'touch' : 'key'}.${i}`)}</li>`).join('');

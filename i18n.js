@@ -10,7 +10,9 @@ window.I18N = (() => {
       'legal.privacy': 'プライバシーポリシー',
       'legal.adSettings': '広告の設定',
       'url.privacy': 'https://techgym.jp/privacy-policy/',
+      // web-only:start
       'url.play': 'https://play.google.com/store/apps/details?id=jp.techgym.offside&hl=ja', 'store.android': '📱 Android アプリ',
+      // web-only:end
       'rules.btn': '📘 オフサイドのルール',
       'howto.btn': '🎮 操作説明', 'howto.title': '操作説明', 'howto.play': '▶ プレイする', 'howto.back': 'タイトルに戻る',
       'nav.btn': 'ナビ {s}',
@@ -149,7 +151,9 @@ window.I18N = (() => {
       'legal.privacy': 'Privacy Policy',
       'legal.adSettings': 'Ad settings',
       'url.privacy': 'https://techgym.jp/privacy-policy-en/',
+      // web-only:start
       'url.play': 'https://play.google.com/store/apps/details?id=jp.techgym.offside&hl=en', 'store.android': '📱 Android app',
+      // web-only:end
       'rules.btn': '📘 Offside rules',
       'howto.btn': '🎮 How to play', 'howto.title': 'How to play', 'howto.play': '▶ Play', 'howto.back': 'Back to title',
       'nav.btn': 'NAV {s}',

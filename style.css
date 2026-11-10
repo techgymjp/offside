@@ -272,6 +272,7 @@ html, body {
   cursor: pointer;
 }
 
+/* web-only:start */
 /* ブラウザ版だけに出す、Google Play のアプリへのリンク */
 .storeBtn {
   text-decoration: none;
@@ -282,6 +283,7 @@ html, body {
 .storeBtn[hidden] {
   display: none;
 }
+/* web-only:end */
 
 /* 操作説明・ルールのページ(キャンバスの上に重ねる。下はアプリのバナー広告のぶん空ける) */
 .page {

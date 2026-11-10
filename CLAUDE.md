@@ -51,3 +51,5 @@ This game supports Japanese and English (auto-selected from the device language,
 - 広告ユニットは `ads.js` の `UNITS.ios`、AdMob のアプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`
 - App Store 用の画像は `docs/store/ios/`(スクリーンショットは 2622×1206。6.9 インチは受け付けられない)
 - 初回の審査では実機(iPhone)での操作の画面録画を求められる。提出前に TestFlight で入れて撮っておく
+- ブラウザ版だけの部分(Google Play へのリンクなど)は目印で囲む(HTML は `<!-- web-only -->` … `<!-- /web-only -->`、JS は `// web-only:start` … `// web-only:end`、CSS は `/* web-only:start */` … `/* web-only:end */`)。`scripts/build-web.js` がアプリ用の `www/` から取り除き、`play.google.com` などが残っていたらビルドを止める。アプリに「ほかのストアへのリンク」や「アプリでだけ隠すコード」が入っていると、iOS の審査で「審査中に隠した機能」(Guideline 5.6)としてリジェクトされることがある
+- 端末・日付・地域などで出し分ける機能は、アプリには入れない(入れるなら審査メモで説明する)
