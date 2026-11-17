@@ -1,0 +1,10 @@
+<ja-JP>
+・広告の配信方法を見直し、読み込みを安定させました
+・より多くの Android 端末（タブレットなど）でインストールできるようにしました
+・細かな不具合を修正しました
+</ja-JP>
+<en-US>
+• Improved how ads are delivered for more stable loading
+• The app can now be installed on more Android devices, including tablets
+• Minor bug fixes
+</en-US>
