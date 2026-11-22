@@ -27,7 +27,7 @@ window.Ads = (() => {
       // AdMob の「オフサイドトラップ」(iOS)
       production: {
         interstitial: 'ca-app-pub-6411535997477460/5246707683',
-        rewarded: 'ca-app-pub-6411535997477460/9350941982',
+        rewarded: 'ca-app-pub-6411535997477460/3387877287',
         banner: 'ca-app-pub-6411535997477460/4727832933',
       },
     },
